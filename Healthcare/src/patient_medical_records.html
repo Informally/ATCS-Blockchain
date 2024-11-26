@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Medical Records</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+        }
+
+        .panel {
+            background-color: #1c1c1c;
+            border: 1px solid #333;
+            border-radius: 8px;
+        }
+
+        .panel-heading {
+            background-color: #282828;
+            border: none;
+            color: #ffffff;
+            text-align: center;
+            font-size: 1.5rem;
+            padding: 10px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+        }
+
+        .panel-body {
+            padding: 20px;
+        }
+
+        .table {
+            color: #ffffff;
+        }
+
+        .table th, .table td {
+            border-top: none;
+        }
+
+        .form-group label {
+            color: #ffffff;
+        }
+
+        .form-control {
+            background-color: #333;
+            color: #ffffff;
+            border: 1px solid #555;
+        }
+
+        .form-control:focus {
+            background-color: #333;
+            color: #ffffff;
+            border-color: #2979ff;
+            outline: none;
+            box-shadow: none;
+        }
+
+        .description-panel {
+            margin-top: 20px;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: #2a2a2a;
+            color: #ffffff;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-inverse">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <a class="navbar-brand" href="#">Patient Medical Records</a>
+            </div>
+            <ul class="nav navbar-nav navbar-right">
+                <li><a href="patient.html">Dashboard</a></li>
+                <li><a href="patient_logs.html">Logs</a></li>
+                <li><a href="./index.html">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Create/Edit Medical Records -->
+        <div class="panel">
+            <div class="panel-heading">Create Medical Record</div>
+            <div class="panel-body">
+                <form id="medicalRecordForm">
+                    <div class="form-group">
+                        <label for="diagnosis">Diagnosis:</label>
+                        <input type="text" class="form-control" id="diagnosis" placeholder="Enter diagnosis (e.g., Flu)">
+                    </div>
+                    <div class="form-group">
+                        <label for="description">Description:</label>
+                        <textarea class="form-control" id="description" rows="4" placeholder="Describe the condition"></textarea>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="createMedicalRecord()">Save Record</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- View Existing Records -->
+        <div class="panel">
+            <div class="panel-heading">Existing Medical Records</div>
+            <div class="panel-body">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Diagnosis</th>
+                            <th>Timestamp</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="medicalRecordsTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Description and Edit Section -->
+        <div class="panel description-panel" id="descriptionPanel" style="display: none;">
+            <div class="panel-heading" id="descriptionTitle">Edit Description</div>
+            <div class="panel-body">
+                <form>
+                    <div class="form-group">
+                        <textarea class="form-control" id="newDescription" rows="4" placeholder="Edit description"></textarea>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="saveEditedDescription()">Save Changes</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <script src="js/jquery.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/contractConfig.js"></script>
+    <script>
+        let web3;
+        let contractInstance;
+        let editingIndex = -1;
+
+        async function initializeWeb3() {
+            if (window.ethereum) {
+                web3 = new Web3(window.ethereum);
+                try {
+                    await window.ethereum.request({ method: "eth_requestAccounts" });
+                    contractInstance = new web3.eth.Contract(contractABI, contractAddress);
+                    await loadMedicalRecords();
+                } catch (error) {
+                    console.error("Error connecting to MetaMask:", error);
+                }
+            } else {
+                alert("Please install MetaMask.");
+            }
+        }
+
+        window.onload = initializeWeb3;
+
+        async function createMedicalRecord() {
+            const accounts = await web3.eth.getAccounts();
+            const diagnosis = document.getElementById("diagnosis").value;
+            const description = document.getElementById("description").value;
+
+            if (!diagnosis || !description) {
+                alert("Please fill out all fields.");
+                return;
+            }
+
+            try {
+                await contractInstance.methods
+                    .addRecordByPatient(diagnosis, description)
+                    .send({ from: accounts[0], gas: 3000000 });
+                alert("Medical record created successfully!");
+                document.getElementById("medicalRecordForm").reset();
+                loadMedicalRecords();
+            } catch (error) {
+                console.error("Error saving record:", error);
+            }
+        }
+
+        async function loadMedicalRecords() {
+            const accounts = await web3.eth.getAccounts();
+            const publicKey = accounts[0];
+
+            try {
+                const result = await contractInstance.methods.getMedicalRecords(publicKey).call();
+                const tableBody = document.getElementById("medicalRecordsTable");
+                tableBody.innerHTML = "";
+
+                result[0].forEach((diagnosis, index) => {
+                    // Convert BigInt timestamp to a readable date string
+                    const timestamp = new Date(Number(result[2][index]) * 1000).toLocaleString();
+
+                    const row = `
+                        <tr>
+                            <td>${diagnosis}</td>
+                            <td>${timestamp}</td>
+                            <td>
+                                <button class="btn btn-primary" onclick="viewDescription(${index}, '${diagnosis}', '${result[1][index]}')">Edit</button>
+                            </td>
+                        </tr>`;
+                    tableBody.innerHTML += row;
+                });
+            } catch (error) {
+                console.error("Error loading records:", error);
+            }
+        }
+
+        function viewDescription(index, diagnosis, description) {
+            editingIndex = index;
+            document.getElementById("descriptionTitle").innerText = `Editing: ${diagnosis}`;
+            document.getElementById("newDescription").value = description;
+            document.getElementById("descriptionPanel").style.display = "block";
+        }
+
+        async function saveEditedDescription() {
+            const accounts = await web3.eth.getAccounts();
+            const newDescription = document.getElementById("newDescription").value;
+
+            if (editingIndex === -1 || !newDescription.trim()) {
+                alert("Invalid input.");
+                return;
+            }
+
+            try {
+                await contractInstance.methods
+                    .editPatientRecord(editingIndex, newDescription)
+                    .send({ from: accounts[0], gas: 3000000 });
+                alert("Record updated successfully!");
+                document.getElementById("descriptionPanel").style.display = "none";
+                loadMedicalRecords();
+            } catch (error) {
+                console.error("Error updating record:", error);
+            }
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Registration Page</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="favicon.ico"/>
+
+    <!-- Custom CSS -->
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+        }
+        .navbar {
+            background-color: #1c1c1c;
+            border: none;
+        }
+        .navbar-brand, .navbar-nav li a {
+            color: #ffffff !important;
+        }
+        .container {
+            margin-top: 30px;
+        }
+        .panel {
+            background-color: #1c1c1c;
+            border: 1px solid #333;
+            border-radius: 8px;
+        }
+        .panel-heading {
+            background-color: #282828;
+            border: none;
+            color: #ffffff;
+            text-align: center;
+            font-size: 1.5rem;
+            padding: 10px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+        }
+        .panel-body {
+            padding: 20px;
+        }
+        .form-group label {
+            color: #ffffff;
+        }
+        .form-control {
+            background-color: #333;
+            color: #ffffff;
+            border: 1px solid #555;
+        }
+        .form-control:focus {
+            background-color: #333;
+            color: #ffffff;
+            border-color: #2979ff;
+            outline: none;
+            box-shadow: none;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-inverse navbar-static-top" role="navigation">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="#">Registration</a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li><a href="./index.html">Login</a></li>
+                    <li class="active"><a href="./register.html">Register</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Content -->
+    <div class="container">
+        <div class="panel">
+            <div class="panel-heading">
+                <h3 class="text-center">Register with ZHAN QUAN HOSPITAL</h3>
+            </div>
+            <div class="panel-body">
+                <form class="form-horizontal" name="registerForm">
+                    <div class="form-group">
+                        <label class="control-label col-sm-2" for="name">Name:</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control" id="name" placeholder="Enter name" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label col-sm-2" for="age">Age:</label>
+                        <div class="col-sm-8">
+                            <input type="number" class="form-control" id="age" placeholder="Enter age" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label col-sm-2" for="designation">Designation:</label>
+                        <div class="col-sm-8">
+                            <select class="form-control" id="designation" required>
+                                <option value="" disabled selected>-- Select --</option>
+                                <option value="0">Patient</option>
+                                <option value="1">Doctor</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <button type="button" class="btn btn-primary btn-lg" onclick="register()">Register</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script> <!-- Load Web3.js -->
+    <script src="js/jquery.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/contractConfig.js"></script> <!-- Include contractConfig.js -->
+    <script src="js/app.js"></script>
+
+    <script>
+        let web3;
+        let contractInstance;
+
+        async function initializeWeb3() {
+            if (window.ethereum) {
+                web3 = new Web3(window.ethereum);
+                try {
+                    await window.ethereum.request({ method: "eth_requestAccounts" });
+                    console.log("MetaMask connected");
+
+                    contractInstance = new web3.eth.Contract(contractABI, contractAddress);
+                    console.log("Contract instance initialized");
+                } catch (error) {
+                    console.error("User denied account access or an error occurred:", error);
+                }
+            } else {
+                alert("Please install MetaMask to use this application.");
+            }
+        }
+
+        window.onload = initializeWeb3;
+
+        async function register() {
+    if (!web3 || !contractInstance) {
+        console.error("Web3 or contract instance not initialized");
+        return;
+    }
+
+    try {
+        const name = document.getElementById('name').value;
+        const age = parseInt(document.getElementById('age').value);
+        const designation = parseInt(document.getElementById('designation').value);
+
+        const accounts = await web3.eth.getAccounts();
+        const publicKey = accounts[0];
+
+        // Check if the user is already registered as a patient or doctor
+        const patientList = await contractInstance.methods.get_patient_list().call();
+        const doctorList = await contractInstance.methods.get_doctor_list().call();
+
+        if (patientList.includes(publicKey) || doctorList.includes(publicKey)) {
+            alert("You are already registered.");
+            return;
+        }
+
+        // Check for doctor name validation
+        if (designation === 1 && !/\(.+\)/.test(name)) {
+            alert("Please include your department in bracket in your name, e.g., User (ENT).");
+            return;
+        }
+
+        // Check if age is exactly two digits
+        if (age < 10 || age > 99) {
+            alert("Please enter a valid age.");
+            return;
+        }
+
+        await contractInstance.methods.add_agent(name, age, designation, "")
+            .send({ from: publicKey, gas: 1000000 });
+
+        alert("Registration successful!");
+    } catch (error) {
+        console.error("Registration error:", error);
+    }
+}
+    </script>
+</body>
+</html>

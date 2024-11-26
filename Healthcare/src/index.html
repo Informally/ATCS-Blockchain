@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>ZHAN QUAN HOSPITAL</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="favicon.ico"/>
+
+    <!-- Custom CSS -->
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+        }
+        .video-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+        .content {
+            position: relative;
+            z-index: 10;
+            top: 45%;
+            transform: translateY(-50%);
+            text-align: center;
+            color: white;
+            background-color: rgba(0, 0, 0, 1);
+            padding: 30px;
+            border-radius: 10px;
+            width: 500px;
+            margin: auto;
+        }
+        .navbar {
+            z-index: 10;
+        }
+        .alert-warning {
+            display: none;
+            background-color: #ff9800;
+            color: #ffffff;
+            border: 1px solid #ff9800;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Video Background -->
+    <video class="video-bg" autoplay muted loop>
+        <source src="media/animation.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-inverse navbar-static-top" role="navigation">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="#">ZHAN QUAN HOSPITAL</a>
+            </div>
+            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav navbar-right">
+                    <li class="active"><a href="./index.html">Login</a></li>
+                    <li><a href="./register.html">Register</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+
+    <!-- Page Content -->
+    <div class="content">
+        <h3>Welcome to ZHAN QUAN HOSPITAL</h3>
+        <img src="favicon.ico" alt="Hospital Logo" style="width: 100px; height: 100px; display: block; margin: 0 auto;">
+        <p>Login is Linked to your Metamask Account</p>
+        <div class="button-group" style="display: flex; justify-content: center; gap: 20px;">
+            <button class="btn btn-primary btn-lg" style="width: 100px" onclick="login()">Login</button>
+            <button class="btn btn-primary btn-lg" style="width: 100px" onclick="location.href='./register.html'">Register</button>
+        </div>
+
+    <!-- Include jQuery First -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Bootstrap Core JavaScript -->
+    <script src="js/bootstrap.min.js"></script>
+    <!-- Include Web3.js and App.js -->
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <script src="js/contractConfig.js"></script>
+    <script src="js/app.js"></script>
+
+    <script>
+        let web3;
+        let contractInstance;
+
+        async function initializeWeb3() {
+            if (window.ethereum) {
+                web3 = new Web3(window.ethereum);
+                try {
+                    await window.ethereum.request({ method: "eth_requestAccounts" });
+                    console.log("MetaMask connected");
+
+                    // Initialize the contract instance
+                    contractInstance = new web3.eth.Contract(contractABI, contractAddress);
+                    console.log("Contract instance initialized");
+                } catch (error) {
+                    console.error("Error connecting to MetaMask:", error);
+                }
+            } else {
+                alert("Please install MetaMask to use this application.");
+            }
+        }
+
+        window.onload = initializeWeb3;
+
+        async function login() {
+    try {
+        const accounts = await web3.eth.getAccounts();
+        const publicKey = accounts[0].toLowerCase();
+        console.log("Public Key:", publicKey);
+
+        const patientList = await contractInstance.methods.get_patient_list().call();
+        console.log("Patient List:", patientList);
+        if (patientList.some(addr => addr.toLowerCase() === publicKey)) {
+            location.href = `./patient.html?key=${publicKey}`;
+            return;
+        }
+
+        const doctorList = await contractInstance.methods.get_doctor_list().call();
+        console.log("Doctor List:", doctorList);
+        if (doctorList.some(addr => addr.toLowerCase() === publicKey)) {
+            location.href = `./doctor.html?key=${publicKey}`;
+            return;
+        }
+
+        // Show alert if user is not registered
+        console.log("Invalid User!");
+        alert("User not recognized. Please register first."); // This creates the alert prompt
+    } catch (error) {
+        console.error("Login error:", error);
+        alert("An error occurred during login. Please try again."); // Alert for login errors
+    }
+}
+    </script>
+</body>
+</html>

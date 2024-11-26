@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Doctor Medical Records</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+
+    <!-- Custom CSS -->
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+        }
+
+        .panel {
+            background-color: #1c1c1c;
+            border: 1px solid #333;
+            border-radius: 8px;
+        }
+
+        .panel-heading {
+            background-color: #282828;
+            border: none;
+            color: #ffffff;
+            text-align: center;
+            font-size: 1.5rem;
+            padding: 10px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+        }
+
+        .panel-body {
+            padding: 20px;
+        }
+
+        .table {
+            color: #ffffff;
+        }
+
+        .table th,
+        .table td {
+            border-top: none;
+        }
+
+        .form-group label {
+            color: #ffffff;
+        }
+
+        .form-control {
+            background-color: #333;
+            color: #ffffff;
+            border: 1px solid #555;
+        }
+
+        .form-control:focus {
+            background-color: #333;
+            color: #ffffff;
+            border-color: #2979ff;
+            outline: none;
+            box-shadow: none;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: #2a2a2a;
+            color: #ffffff;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-inverse navbar-static-top" role="navigation">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="#">Doctor Medical Records</a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li><a href="doctor.html">Dashboard</a></li>
+                    <li><a href="doctor_logs.html">Logs</a></li>
+                    <li><a href="./index.html">Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Content -->
+    <div class="container">
+        <div class="panel">
+            <div class="panel-heading">Connected Patients</div>
+            <div class="panel-body">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Patient</th>
+                            <th>Public Key</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="connectedPatientsTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Record Management Section -->
+        <div class="panel description-section" id="recordManagementSection" style="display: none;">
+            <div class="panel-heading" id="recordManagementTitle">Manage Records</div>
+            <div class="panel-body">
+                <div class="form-group">
+                    <label for="recordDropdown">Select Record to Edit:</label>
+                    <select class="form-control" id="recordDropdown" onchange="loadRecordDetails()">
+                        <option value="" selected disabled>--Please Select--</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="recordDescription">Description:</label>
+                    <textarea class="form-control" style="background-color: #333" id="recordDescription" rows="4" placeholder="Enter or edit the record description" readonly></textarea>
+                </div>
+                <button type="button" class="btn btn-success" onclick="saveRecord()">Save Record</button>
+                <button type="button" class="btn btn-danger" onclick="closeRecordManagement()">Close</button>
+            </div>
+        </div>
+
+        <!-- Create New Record Section -->
+        <div class="panel description-section" id="createRecordSection" style="display: none;">
+            <div class="panel-heading">Create New Record</div>
+            <div class="panel-body">
+                <div class="form-group">
+                    <label for="newRecordTitle">Title:</label>
+                    <input type="text" class="form-control" id="newRecordTitle" placeholder="Enter record title">
+                </div>
+                <div class="form-group">
+                    <label for="newRecordDescription">Description:</label>
+                    <textarea class="form-control" id="newRecordDescription" rows="4" placeholder="Enter record description"></textarea>
+                </div>
+                <button type="button" class="btn btn-primary" onclick="saveNewRecord()">Save Record</button>
+                <button type="button" class="btn btn-danger" onclick="closeCreateRecord()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <script src="js/jquery.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/contractConfig.js"></script>
+    <script>
+        let web3;
+        let contractInstance;
+        let currentPatient = null;
+
+        async function initializeWeb3() {
+            if (window.ethereum) {
+                web3 = new Web3(window.ethereum);
+                try {
+                    await window.ethereum.request({ method: "eth_requestAccounts" });
+                    console.log("MetaMask connected");
+
+                    contractInstance = new web3.eth.Contract(contractABI, contractAddress);
+                    console.log("Contract instance initialized");
+
+                    loadConnectedPatients();
+                } catch (error) {
+                    console.error("Error connecting to MetaMask:", error);
+                }
+            } else {
+                alert("Please install MetaMask to use this application.");
+            }
+        }
+
+        window.onload = initializeWeb3;
+
+        async function loadConnectedPatients() {
+            const accounts = await web3.eth.getAccounts();
+            const publicKey = accounts[0].toLowerCase();
+
+            const connectedPatients = await contractInstance.methods.get_accessed_patientlist_for_doctor(publicKey).call();
+            const connectedPatientsTable = document.getElementById("connectedPatientsTable");
+
+            connectedPatientsTable.innerHTML = ""; // Clear the table
+
+            for (const patient of connectedPatients) {
+                const patientDetails = await contractInstance.methods.get_patient(patient).call();
+                const patientName = patientDetails[0];
+
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${patientName}</td>
+                    <td>${patient}</td>
+                    <td>
+                        <button class="btn btn-success" onclick="createNewRecord('${patient}')">Create Record</button>
+                        <button class="btn btn-primary" onclick="manageRecords('${patient}')">Edit Records</button>
+                    </td>
+                `;
+                connectedPatientsTable.appendChild(row);
+            }
+        }
+
+        async function manageRecords(patientAddress) {
+        currentPatient = patientAddress;
+
+        // Load existing records into the dropdown
+        const records = await contractInstance.methods.getMedicalRecords(patientAddress).call();
+        const diagnoses = Array.from(records[0]);
+        const recordDropdown = document.getElementById("recordDropdown");
+
+        recordDropdown.innerHTML = '<option value="" selected disabled>--Please Select--</option>'; // Add default option
+        diagnoses.forEach((diagnosis, index) => {
+            const option = document.createElement("option");
+            option.value = index;
+            option.textContent = diagnosis;
+            recordDropdown.appendChild(option);
+        });
+
+        document.getElementById("recordManagementSection").style.display = "block";
+        document.getElementById("recordDescription").value = ""; // Clear description field
+    }
+
+        function loadRecordDetails() {
+            const selectedIndex = document.getElementById("recordDropdown").value;
+            const recordDescription = document.getElementById("recordDescription");
+
+            if (selectedIndex !== "") {
+                // Fetch the corresponding record description
+                contractInstance.methods
+                    .getMedicalRecords(currentPatient)
+                    .call()
+                    .then((records) => {
+                        recordDescription.value = records[1][selectedIndex]; // Load the description for the selected record
+                        recordDescription.readOnly = false; // Allow editing
+                    });
+            } else {
+                recordDescription.value = ""; // Clear the description if no record is selected
+                recordDescription.readOnly = true; // Disable editing
+            }
+        }
+
+        async function saveRecord() {
+            const description = document.getElementById("recordDescription").value;
+            const selectedIndex = document.getElementById("recordDropdown").value;
+
+            if (!selectedIndex || !description) {
+                alert("Please select a record and provide a description.");
+                return;
+            }
+
+            try {
+                const accounts = await web3.eth.getAccounts();
+                const publicKey = accounts[0];
+
+                // Call the smart contract method to save or update the record
+                await contractInstance.methods.editMedicalRecord(currentPatient, selectedIndex, description).send({
+                    from: publicKey,
+                    gas: 1000000,
+                });
+
+                alert("Record updated successfully!");
+                closeRecordManagement();
+            } catch (error) {
+                console.error("Error saving record:", error);
+            }
+        }
+
+        function closeRecordManagement() {
+            document.getElementById("recordManagementSection").style.display = "none";
+            document.getElementById("recordDropdown").innerHTML = '<option value="" selected disabled>--Please Select--</option>'; // Reset dropdown
+            document.getElementById("recordDescription").value = ""; // Clear description field
+        }
+
+        async function createNewRecord(patientAddress) {
+            currentPatient = patientAddress;
+            document.getElementById("createRecordSection").style.display = "block";
+        }
+
+        async function saveNewRecord() {
+            const title = document.getElementById("newRecordTitle").value;
+            const description = document.getElementById("newRecordDescription").value;
+
+            if (!title || !description) {
+                alert("Please fill out all fields.");
+                return;
+            }
+
+            try {
+                const accounts = await web3.eth.getAccounts();
+                const publicKey = accounts[0];
+
+                // Call the smart contract method for doctors to add records
+                await contractInstance.methods.addRecordByDoctor(currentPatient, title, description).send({
+                    from: publicKey,
+                    gas: 1000000,
+                });
+
+                alert("New record created successfully!");
+                closeCreateRecord();
+            } catch (error) {
+                console.error("Error creating new record:", error);
+            }
+        }
+
+
+        function closeCreateRecord() {
+            document.getElementById("createRecordSection").style.display = "none";
+        }
+    </script>
+</body>
+
+</html>
