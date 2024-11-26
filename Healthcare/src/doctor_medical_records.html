@@ -93,7 +93,7 @@
                 <ul class="nav navbar-nav navbar-right">
                     <li><a href="doctor.html">Dashboard</a></li>
                     <li><a href="doctor_logs.html">Logs</a></li>
-                    <li><a href="./index.html">Logout</a></li>
+                    <li><a id="logoutButton" href="#">Logout</a></li>
                 </ul>
             </div>
         </div>
@@ -184,6 +184,18 @@
         }
 
         window.onload = initializeWeb3;
+
+        window.onload = function () {
+            initializeWeb3();
+
+            // Attach logout functionality
+            const logoutButton = document.getElementById("logoutButton");
+            if (logoutButton) {
+                logoutButton.addEventListener("click", logout);
+            } else {
+                console.error("Logout button not found.");
+            }
+        };
 
         async function loadConnectedPatients() {
             const accounts = await web3.eth.getAccounts();
@@ -313,9 +325,31 @@
             }
         }
 
-
         function closeCreateRecord() {
             document.getElementById("createRecordSection").style.display = "none";
+        }
+        
+        async function logout() {
+            const accounts = await web3.eth.getAccounts();
+            const publicKey = accounts[0];
+
+            try {
+                // Emit the logout event to the blockchain
+                await contractInstance.methods.log_patient_logout().send({ from: publicKey });
+                console.log("Logout event emitted to the blockchain.");
+            } catch (error) {
+                console.error("Error emitting logout event:", error);
+            }
+
+            // Clear session storage and reset
+            sessionStorage.clear();
+            console.log("Session cleared. User logged out.");
+
+            // Inform the user
+            alert("You have been logged out successfully!");
+
+            // Redirect to the login page
+            location.href = "./index.html";
         }
     </script>
 </body>

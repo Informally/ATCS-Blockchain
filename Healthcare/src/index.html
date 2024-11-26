@@ -12,7 +12,7 @@
 
     <!-- Bootstrap Core CSS -->
     <link href="css/bootstrap.min.css" rel="stylesheet">
-    <link rel="icon" type="image/x-icon" href="favicon.ico"/>
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
 
     <!-- Custom CSS -->
     <style>
@@ -21,6 +21,7 @@
             margin: 0;
             overflow: hidden;
         }
+
         .video-bg {
             position: fixed;
             top: 0;
@@ -30,6 +31,7 @@
             object-fit: cover;
             z-index: -1;
         }
+
         .content {
             position: relative;
             z-index: 10;
@@ -43,9 +45,11 @@
             width: 500px;
             margin: auto;
         }
+
         .navbar {
             z-index: 10;
         }
+
         .alert-warning {
             display: none;
             background-color: #ff9800;
@@ -87,7 +91,6 @@
         </div>
     </nav>
 
-
     <!-- Page Content -->
     <div class="content">
         <h3>Welcome to ZHAN QUAN HOSPITAL</h3>
@@ -97,6 +100,7 @@
             <button class="btn btn-primary btn-lg" style="width: 100px" onclick="login()">Login</button>
             <button class="btn btn-primary btn-lg" style="width: 100px" onclick="location.href='./register.html'">Register</button>
         </div>
+    </div>
 
     <!-- Include jQuery First -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -105,7 +109,6 @@
     <!-- Include Web3.js and App.js -->
     <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
     <script src="js/contractConfig.js"></script>
-    <script src="js/app.js"></script>
 
     <script>
         let web3;
@@ -118,7 +121,6 @@
                     await window.ethereum.request({ method: "eth_requestAccounts" });
                     console.log("MetaMask connected");
 
-                    // Initialize the contract instance
                     contractInstance = new web3.eth.Contract(contractABI, contractAddress);
                     console.log("Contract instance initialized");
                 } catch (error) {
@@ -132,33 +134,49 @@
         window.onload = initializeWeb3;
 
         async function login() {
-    try {
-        const accounts = await web3.eth.getAccounts();
-        const publicKey = accounts[0].toLowerCase();
-        console.log("Public Key:", publicKey);
+            if (window.ethereum) {
+                try {
+                    const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+                    const publicKey = accounts[0];
+                    console.log("Logged in as:", publicKey);
 
-        const patientList = await contractInstance.methods.get_patient_list().call();
-        console.log("Patient List:", patientList);
-        if (patientList.some(addr => addr.toLowerCase() === publicKey)) {
-            location.href = `./patient.html?key=${publicKey}`;
-            return;
+                    // Emit the login event
+                    try {
+                        await contractInstance.methods.log_patient_login().send({ from: publicKey, gas: 100000 });
+                        console.log("Login event emitted to blockchain.");
+                    } catch (emitError) {
+                        console.error("Error emitting login event:", emitError);
+                        alert("Login failed due to a blockchain error.");
+                        return;
+                    }
+
+                    // Check user role
+                    const patient = await contractInstance.methods.get_patient(publicKey).call();
+                    const doctor = await contractInstance.methods.get_doctor(publicKey).call();
+
+                    if (patient[0]) {
+                        console.log("User is a patient.");
+                        sessionStorage.setItem("loggedInUser", publicKey);
+                        alert("Login successful as Patient!");
+                        location.href = "./patient.html";
+                    } else if (doctor[0]) {
+                        console.log("User is a doctor.");
+                        sessionStorage.setItem("loggedInUser", publicKey);
+                        alert("Login successful as Doctor!");
+                        location.href = "./doctor.html";
+                    } else {
+                        alert("User not registered. Please register first.");
+                        location.href = "./register.html";
+                    }
+                } catch (error) {
+                    console.error("Error during login:", error);
+                    alert("Failed to log in. Please try again.");
+                }
+            } else {
+                alert("Please install MetaMask to use this application.");
+            }
         }
-
-        const doctorList = await contractInstance.methods.get_doctor_list().call();
-        console.log("Doctor List:", doctorList);
-        if (doctorList.some(addr => addr.toLowerCase() === publicKey)) {
-            location.href = `./doctor.html?key=${publicKey}`;
-            return;
-        }
-
-        // Show alert if user is not registered
-        console.log("Invalid User!");
-        alert("User not recognized. Please register first."); // This creates the alert prompt
-    } catch (error) {
-        console.error("Login error:", error);
-        alert("An error occurred during login. Please try again."); // Alert for login errors
-    }
-}
     </script>
 </body>
+
 </html>
