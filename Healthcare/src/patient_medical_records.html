@@ -37,7 +37,8 @@
             color: #ffffff;
         }
 
-        .table th, .table td {
+        .table th,
+        .table td {
             border-top: none;
         }
 
@@ -74,7 +75,7 @@
     <nav class="navbar navbar-inverse">
         <div class="container-fluid">
             <div class="navbar-header">
-                <a class="navbar-brand" href="#">Patient Medical Records</a>
+                <a class="navbar-brand" href="patient.html">Patient Dashboard</a>
             </div>
             <ul class="nav navbar-nav navbar-right">
                 <li><a href="patient.html">Dashboard</a></li>
@@ -191,16 +192,26 @@
                 const tableBody = document.getElementById("medicalRecordsTable");
                 tableBody.innerHTML = "";
 
+                const records = [];
                 result[0].forEach((diagnosis, index) => {
-                    // Convert BigInt timestamp to a readable date string
-                    const timestamp = new Date(Number(result[2][index]) * 1000).toLocaleString();
+                    records.push({
+                        diagnosis,
+                        description: result[1][index],
+                        timestamp: Number(result[2][index]) * 1000,
+                        index,
+                    });
+                });
 
+                // Sort records by timestamp in descending order
+                records.sort((a, b) => b.timestamp - a.timestamp);
+
+                records.forEach((record) => {
                     const row = `
                         <tr>
-                            <td>${diagnosis}</td>
-                            <td>${timestamp}</td>
+                            <td>${record.diagnosis}</td>
+                            <td>${new Date(record.timestamp).toLocaleString()}</td>
                             <td>
-                                <button class="btn btn-primary" onclick="viewDescription(${index}, '${diagnosis}', '${result[1][index]}')">Edit</button>
+                                <button class="btn btn-primary" onclick="viewDescription(${record.index}, '${encodeURIComponent(record.diagnosis)}', '${encodeURIComponent(record.description)}')">Edit</button>
                             </td>
                         </tr>`;
                     tableBody.innerHTML += row;
@@ -212,8 +223,8 @@
 
         function viewDescription(index, diagnosis, description) {
             editingIndex = index;
-            document.getElementById("descriptionTitle").innerText = `Editing: ${diagnosis}`;
-            document.getElementById("newDescription").value = description;
+            document.getElementById("descriptionTitle").innerText = `Editing: ${decodeURIComponent(diagnosis)}`;
+            document.getElementById("newDescription").value = decodeURIComponent(description);
             document.getElementById("descriptionPanel").style.display = "block";
         }
 

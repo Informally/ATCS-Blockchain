@@ -108,6 +108,18 @@ const contractABI = [
 				"internalType": "string",
 				"name": "ipfsHash",
 				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "addedBy",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "timestamp",
+				"type": "uint256"
 			}
 		],
 		"name": "MedicalRecordAdded",
@@ -133,9 +145,27 @@ const contractABI = [
 				"internalType": "string",
 				"name": "newDescription",
 				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "editedBy",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "editedByName",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "timestamp",
+				"type": "uint256"
 			}
 		],
-		"name": "MedicalRecordUpdated",
+		"name": "MedicalRecordEdited",
 		"type": "event"
 	},
 	{
@@ -624,7 +654,7 @@ const contractABI = [
 	}
 ];
 
-const contractAddress = '0xf8f8b6648d622c9783Cfe51A12f5c5Fe5eDd0C99'; // Your contract address
+const contractAddress = '0x396Dcf4570aca3C3971eC50Db29f4F24c7B9eC39'; // Your contract address
 
 // Make the variables globally accessible
 window.contractABI = contractABI;
