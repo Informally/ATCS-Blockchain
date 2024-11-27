@@ -35,13 +35,18 @@ contract Agent {
     mapping(address => address[]) public pendingRequests;
 
     event AgentAdded(address indexed agent, string name, uint256 age, uint256 designation);
-    event AccessRequested(address indexed patient, address indexed doctor);
-    event AccessGranted(address indexed doctor, address indexed patient);
-    event AccessRevoked(address indexed patient, address indexed doctor);
-    event MedicalRecordAdded(address indexed patient, string diagnosis, string ipfsHash);
-    event MedicalRecordUpdated(address indexed patient, uint256 index, string newDescription);
+    event AccessRequested(address indexed patient, address indexed doctor, uint256 timestamp);
+    event AccessGranted(address indexed doctor, address indexed patient, uint256 timestamp);
+    event AccessRejected(address indexed doctor, address indexed patient, uint256 timestamp);
+    event AccessRevoked(address indexed patient, address indexed doctor, uint256 timestamp);
+    event MedicalRecordAdded(address indexed patient, string diagnosis, string ipfsHash, address addedBy, uint256 timestamp);
+    event MedicalRecordEdited(address indexed patient, uint256 index, string newDescription, address editedBy, string editedByName, uint256 timestamp);
+    event PatientLoggedIn(address indexed patient, string name, uint256 timestamp);
+    event PatientLoggedOut(address indexed patient, string name, uint256 timestamp);
+    event DoctorLoggedIn(address indexed doctor, string name, uint256 timestamp);
+    event DoctorLoggedOut(address indexed doctor, string name, uint256 timestamp);
 
-    // Function to add a patient or doctor
+    // Add a patient or doctor
     function add_agent(
         string memory _name,
         uint256 _age,
@@ -71,7 +76,6 @@ contract Agent {
         return _name;
     }
 
-    // Function to create a medical record for a patient (Doctor)
     function addRecordByDoctor(address patientAddr, string memory _diagnosis, string memory _ipfsHash) public {
         require(bytes(doctorInfo[msg.sender].name).length > 0, "Caller is not a registered doctor");
         require(bytes(patientInfo[patientAddr].name).length > 0, "Patient does not exist");
@@ -86,10 +90,11 @@ contract Agent {
             })
         );
 
-        emit MedicalRecordAdded(patientAddr, _diagnosis, _ipfsHash);
+        // Emit the event with the doctor's address as `addedBy`
+        emit MedicalRecordAdded(patientAddr, _diagnosis, _ipfsHash, msg.sender, block.timestamp);
     }
 
-    // Function to edit a medical record (Doctor)
+    // Modify `editMedicalRecord` function
     function editMedicalRecord(address patientAddr, uint256 index, string memory newDescription) public {
         require(bytes(doctorInfo[msg.sender].name).length > 0, "Caller is not a registered doctor");
         require(bytes(patientInfo[patientAddr].name).length > 0, "Patient does not exist");
@@ -98,10 +103,10 @@ contract Agent {
 
         patientInfo[patientAddr].records[index].ipfsHash = newDescription;
 
-        emit MedicalRecordUpdated(patientAddr, index, newDescription);
+        // Emit the doctor's name and address
+        emit MedicalRecordEdited(patientAddr, index, newDescription, msg.sender, doctorInfo[msg.sender].name, block.timestamp);
     }
 
-    // **New Function**: Allow patients to add their own medical records
     function addRecordByPatient(string memory _diagnosis, string memory _ipfsHash) public {
         require(bytes(patientInfo[msg.sender].name).length > 0, "Caller is not a registered patient");
 
@@ -114,17 +119,30 @@ contract Agent {
             })
         );
 
-        emit MedicalRecordAdded(msg.sender, _diagnosis, _ipfsHash);
+        // Emit the event with the patient's address as `addedBy`
+        emit MedicalRecordAdded(msg.sender, _diagnosis, _ipfsHash, msg.sender, block.timestamp);
     }
 
-    // **New Function**: Allow patients to edit their own medical records
+    // Modify `editPatientRecord` function
     function editPatientRecord(uint256 index, string memory newDescription) public {
         require(bytes(patientInfo[msg.sender].name).length > 0, "Caller is not a registered patient");
         require(index < patientInfo[msg.sender].records.length, "Invalid record index");
 
         patientInfo[msg.sender].records[index].ipfsHash = newDescription;
 
-        emit MedicalRecordUpdated(msg.sender, index, newDescription);
+        string memory editedByName = patientInfo[msg.sender].name;
+
+        emit MedicalRecordEdited(msg.sender, index, newDescription, msg.sender, editedByName, block.timestamp);
+    }
+
+    function getAgentName(address agentAddr) public view returns (string memory) {
+        if (bytes(patientInfo[agentAddr].name).length > 0) {
+            return patientInfo[agentAddr].name;
+        }
+        if (bytes(doctorInfo[agentAddr].name).length > 0) {
+            return doctorInfo[agentAddr].name;
+        }
+        return "Unknown";
     }
 
     // Function to get medical records for a patient
@@ -185,7 +203,31 @@ contract Agent {
         return doctorList;
     }
 
-    // Request access from a patient to a doctor
+    // Log patient login
+    function log_patient_login() public {
+        require(bytes(patientInfo[msg.sender].name).length > 0, "Caller is not a registered patient");
+        emit PatientLoggedIn(msg.sender, patientInfo[msg.sender].name, block.timestamp);
+    }
+
+    // Log patient logout
+    function log_patient_logout() public {
+        require(bytes(patientInfo[msg.sender].name).length > 0, "Caller is not a registered patient");
+        emit PatientLoggedOut(msg.sender, patientInfo[msg.sender].name, block.timestamp);
+    }
+
+    // Log doctor login
+    function log_doctor_login() public {
+        require(bytes(doctorInfo[msg.sender].name).length > 0, "Caller is not a registered doctor");
+        emit DoctorLoggedIn(msg.sender, doctorInfo[msg.sender].name, block.timestamp);
+    }
+
+    // Log doctor logout
+    function log_doctor_logout() public {
+        require(bytes(doctorInfo[msg.sender].name).length > 0, "Caller is not a registered doctor");
+        emit DoctorLoggedOut(msg.sender, doctorInfo[msg.sender].name, block.timestamp);
+    }
+
+// Request access from a patient to a doctor
     function request_access(address doctorAddr) public {
         require(bytes(doctorInfo[doctorAddr].name).length > 0, "Doctor does not exist");
         require(!accessRequests[msg.sender][doctorAddr], "Request already pending");
@@ -194,7 +236,7 @@ contract Agent {
         accessRequests[msg.sender][doctorAddr] = true;
         pendingRequests[doctorAddr].push(msg.sender);
 
-        emit AccessRequested(msg.sender, doctorAddr);
+        emit AccessRequested(msg.sender, doctorAddr, block.timestamp);
     }
 
     // Accept access request
@@ -207,7 +249,7 @@ contract Agent {
         accessRequests[patientAddr][msg.sender] = false;
         remove_pending_request(msg.sender, patientAddr);
 
-        emit AccessGranted(msg.sender, patientAddr);
+        emit AccessGranted(msg.sender, patientAddr, block.timestamp);
     }
 
     // Reject access request
@@ -217,6 +259,8 @@ contract Agent {
         accessRequests[patientAddr][msg.sender] = false;
         rejectedRequests[patientAddr][msg.sender] = true;
         remove_pending_request(msg.sender, patientAddr);
+
+        emit AccessRejected(msg.sender, patientAddr, block.timestamp);
     }
 
     // Internal function to remove a pending request
@@ -263,12 +307,13 @@ contract Agent {
         patientInfo[msg.sender].doctorAccessList.push(doctorAddr);
     }
 
+
     // Revoke access
     function revoke_access(address doctorAddr) public {
         remove_patient(msg.sender, doctorAddr);
         creditPool -= 2 ether;
 
-        emit AccessRevoked(msg.sender, doctorAddr);
+        emit AccessRevoked(msg.sender, doctorAddr, block.timestamp);
     }
 
     // Internal function to remove access between a patient and doctor
@@ -277,7 +322,7 @@ contract Agent {
         remove_element_in_array(patientInfo[patientAddr].doctorAccessList, doctorAddr);
     }
 
-    // Internal helper to remove an element from an array
+// Internal helper to remove an element from an array
     function remove_element_in_array(address[] storage array, address addr) internal {
         uint256 length = array.length;
         for (uint256 i = 0; i < length; i++) {

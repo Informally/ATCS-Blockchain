@@ -16,7 +16,7 @@
 
     <!-- Custom CSS -->
     <style>
-        body {
+ body {
             background-color: #121212;
             color: #ffffff;
         }
@@ -51,11 +51,29 @@
             border-top: none;
         }
 
+        .form-group label {
+            color: #ffffff;
+        }
+
+        .form-control {
+            background-color: #333;
+            color: #ffffff;
+            border: 1px solid #555;
+        }
+
+        .form-control:focus {
+            background-color: #333;
+            color: #ffffff;
+            border-color: #2979ff;
+            outline: none;
+            box-shadow: none;
+        }
+
         .table-hover tbody tr:hover {
             background-color: #2a2a2a;
             color: #ffffff;
         }
-
+    
         .btn-navigation {
             margin: 10px;
             background-color: #2979ff;
@@ -65,37 +83,13 @@
             border-radius: 4px;
             text-decoration: none;
         }
-
+    
         .btn-navigation:hover {
             background-color: #1e60cc;
         }
-
-        .form-control {
-            background-color: #1c1c1c;
-            color: #ffffff;
-            border: 1px solid #333;
-            border-radius: 4px;
-            box-shadow: none;
-            outline: none;
-        }
-
-        .form-control:hover,
-        .form-control:focus {
-            background-color: #282828;
-            border-color: #2979ff;
-            color: #ffffff;
-        }
-
-        .form-control option {
-            background-color: #1c1c1c;
-            color: #ffffff;
-        }
-
-        .form-control option:hover {
-            background-color: #282828;
-            color: #ffffff;
-        }
+  
     </style>
+    
 </head>
 
 <body>
@@ -164,6 +158,25 @@
             </div>
         </div>
 
+        <!-- Medical Records Display -->
+        <div class="panel" id="patientRecordsPanel" style="display: none;">
+            <div class="panel-heading">
+                Patient Medical Records
+                <button onclick="closeRecordsPanel()" class="btn btn-danger btn-sm pull-right">Close</button>
+            </div>
+            <div class="panel-body">
+                <div class="form-group">
+                    <label for="recordDropdown">Select Diagnosis:</label>
+                    <select class="form-control" id="recordDropdown" onchange="loadSelectedRecord()">
+                        <option value="" selected disabled>--Select Diagnosis--</option>
+                    </select>
+                </div>
+                <div id="selectedRecordContainer">
+                    <!-- Record details will be dynamically inserted here -->
+                </div>
+            </div>
+        </div>
+
         <!-- Additional Functions -->
         <div class="panel">
             <div class="panel-heading">Additional Functions</div>
@@ -183,88 +196,198 @@
     <script>
         async function initializePage() {
             try {
-                await validateLogin(); // Ensure the user is logged in
-                await validateRole("doctor"); // Ensure the user is a doctor
-                await initializeWeb3(); // Set up Web3
-                await loadDoctorDetails(); // Load doctor's personal information
+                await validateLogin(); // Ensure user is logged in
+                await validateRole("doctor"); // Ensure user is a doctor
+                await initializeWeb3(); // Initialize Web3
+                await loadDoctorDetails(); // Load doctor's details
                 await loadAccessRequests(); // Load pending access requests
                 await loadConnectedPatients(); // Load accessible EHRs
                 attachLogout(); // Attach logout functionality
             } catch (error) {
                 console.error("Error initializing doctor dashboard:", error);
+                alert("An error occurred. Redirecting to login page...");
+                location.href = "./index.html";
             }
         }
-
+    
         async function loadDoctorDetails() {
-            const accounts = await web3.eth.getAccounts();
-            const publicKey = accounts[0];
-            const doctorData = await contractInstance.methods.get_doctor(publicKey).call();
-            document.getElementById("name").textContent = doctorData[0];
-            document.getElementById("age").textContent = doctorData[1];
-        }
-
-        async function loadAccessRequests() {
-            const accounts = await web3.eth.getAccounts();
-            const publicKey = accounts[0];
-            const accessRequests = await contractInstance.methods.get_access_requests(publicKey).call();
-            const table = document.getElementById("accessRequestsTable");
-            table.innerHTML = ""; // Clear existing rows
-
-            for (const patient of accessRequests) {
-                const patientData = await contractInstance.methods.get_patient(patient).call();
-                const row = `
-                    <tr>
-                        <td>${patientData[0]}</td>
-                        <td>${patient}</td>
-                        <td>
-                            <button class="btn btn-success" onclick="acceptRequest('${patient}')">Accept</button>
-                            <button class="btn btn-danger" onclick="rejectRequest('${patient}')">Reject</button>
-                        </td>
-                    </tr>`;
-                table.innerHTML += row;
-            }
-        }
-
-        async function loadConnectedPatients() {
-            const accounts = await web3.eth.getAccounts();
-            const publicKey = accounts[0];
-            const connectedPatients = await contractInstance.methods.get_accessed_patientlist_for_doctor(publicKey).call();
-            const table = document.getElementById("connectedPatientsTable");
-            table.innerHTML = ""; // Clear existing rows
-
-            for (const patient of connectedPatients) {
-                const patientData = await contractInstance.methods.get_patient(patient).call();
-                const row = `
-                    <tr>
-                        <td>${patientData[0]}</td>
-                        <td>${patient}</td>
-                        <td><button class="btn btn-primary" onclick="viewRecords('${patient}')">View Records</button></td>
-                    </tr>`;
-                table.innerHTML += row;
-            }
-        }
-
-        async function acceptRequest(patient) {
-            const accounts = await web3.eth.getAccounts();
             try {
-                await contractInstance.methods.accept_access_request(patient).send({ from: accounts[0], gas: 3000000 });
+                const accounts = await web3.eth.getAccounts();
+                const publicKey = accounts[0];
+                const doctor = await contractInstance.methods.get_doctor(publicKey).call();
+                document.getElementById("name").textContent = doctor[0];
+                document.getElementById("age").textContent = doctor[1];
+            } catch (error) {
+                console.error("Error loading doctor details:", error);
+            }
+        }
+    
+        async function loadAccessRequests() {
+            try {
+                const accounts = await web3.eth.getAccounts();
+                const publicKey = accounts[0];
+                const accessRequests = await contractInstance.methods.get_access_requests(publicKey).call();
+                const table = document.getElementById("accessRequestsTable");
+                table.innerHTML = ""; // Clear existing rows
+    
+                for (const patient of accessRequests) {
+                    const patientData = await contractInstance.methods.get_patient(patient).call();
+                    const row = `
+                        <tr>
+                            <td>${patientData[0]}</td>
+                            <td>${patient}</td>
+                            <td>
+                                <button class="btn btn-success" onclick="acceptRequest('${patient}')">Accept</button>
+                                <button class="btn btn-danger" onclick="rejectRequest('${patient}')">Reject</button>
+                            </td>
+                        </tr>`;
+                    table.innerHTML += row;
+                }
+            } catch (error) {
+                console.error("Error loading access requests:", error);
+            }
+        }
+    
+        async function loadConnectedPatients() {
+            try {
+                const accounts = await web3.eth.getAccounts();
+                const publicKey = accounts[0];
+                const connectedPatients = await contractInstance.methods.get_accessed_patientlist_for_doctor(publicKey).call();
+                const table = document.getElementById("connectedPatientsTable");
+                table.innerHTML = ""; // Clear existing rows
+    
+                for (const patient of connectedPatients) {
+                    const patientData = await contractInstance.methods.get_patient(patient).call();
+                    const row = `
+                        <tr>
+                            <td>${patientData[0]}</td>
+                            <td>${patient}</td>
+                            <td><button class="btn btn-primary" onclick="viewRecords('${patient}')">View Records</button></td>
+                        </tr>`;
+                    table.innerHTML += row;
+                }
+            } catch (error) {
+                console.error("Error loading connected patients:", error);
+            }
+        }
+    
+        async function acceptRequest(patient) {
+            try {
+                const accounts = await web3.eth.getAccounts();
+                await contractInstance.methods.accept_access_request(patient).send({ from: accounts[0] });
                 alert("Access granted!");
-                loadAccessRequests();
-                loadConnectedPatients();
+                await loadAccessRequests();
+                await loadConnectedPatients();
             } catch (error) {
                 console.error("Error accepting access request:", error);
             }
         }
-
+    
         async function rejectRequest(patient) {
-            const accounts = await web3.eth.getAccounts();
             try {
-                await contractInstance.methods.reject_access_request(patient).send({ from: accounts[0], gas: 3000000 });
+                const accounts = await web3.eth.getAccounts();
+                await contractInstance.methods.reject_access_request(patient).send({ from: accounts[0] });
                 alert("Access rejected!");
-                loadAccessRequests();
+                await loadAccessRequests();
             } catch (error) {
                 console.error("Error rejecting access request:", error);
             }
+        }
+    
+        // async function viewRecords(patient) {
+        //     try {
+        //         // Fetch the patient's name using their address
+        //         const patientData = await contractInstance.methods.get_patient(patient).call();
+        //         const patientName = patientData[0]; // Assuming the name is the first item in the tuple
+
+        //         const records = await contractInstance.methods.getMedicalRecords(patient).call();
+        //         let message = `Medical Records for ${patientName}:(${patient})\n\n`;
+
+        //         for (let i = 0; i < records[0].length; i++) {
+        //             const diagnosis = records[0][i];
+        //             const ipfsHash = records[1][i];
+        //             const timestamp = new Date(parseInt(records[2][i], 10) * 1000).toLocaleString();
+        //             message += `Record ${i + 1}:\nDiagnosis: ${diagnosis}\nIPFS Hash: ${ipfsHash}\nTimestamp: ${timestamp}\n\n`;
+        //         }
+
+        //         if (records[0].length === 0) {
+        //             message = `No records found for patient ${patientName}.`;
+        //         }
+
+        //         alert(message);
+        //     } catch (error) {
+        //         console.error("Error retrieving records:", error);
+        //         alert("Failed to retrieve records. Please try again.");
+        //     }
+        // }
+
+        async function viewRecords(patient) {
+            try {
+                // Set the current patient
+                currentPatient = patient;
+
+                // Fetch records from the contract
+                const records = await contractInstance.methods.getMedicalRecords(patient).call();
+                const recordDropdown = document.getElementById("recordDropdown");
+                const recordsPanel = document.getElementById("patientRecordsPanel");
+
+                // Clear the dropdown and panel
+                recordDropdown.innerHTML = '<option value="" selected disabled>--Select Diagnosis--</option>';
+                document.getElementById("selectedRecordContainer").innerHTML = "";
+
+                // Populate the dropdown with diagnoses
+                for (let i = 0; i < records[0].length; i++) {
+                    const diagnosis = records[0][i];
+                    const option = document.createElement("option");
+                    option.value = i;
+                    option.textContent = diagnosis;
+                    recordDropdown.appendChild(option);
+                }
+
+                // Display the panel
+                recordsPanel.style.display = "block";
+            } catch (error) {
+                console.error("Error retrieving records:", error);
+                alert("Failed to retrieve records. Please try again.");
+            }
+        }
+
+        async function loadSelectedRecord() {
+            try {
+                const selectedIndex = document.getElementById("recordDropdown").value;
+
+                if (selectedIndex === "") {
+                    document.getElementById("selectedRecordContainer").innerHTML = "";
+                    return;
+                }
+
+                // Fetch records for the current patient
+                const records = await contractInstance.methods.getMedicalRecords(currentPatient).call();
+                const selectedRecordContainer = document.getElementById("selectedRecordContainer");
+
+                // Display the selected record's details
+                const diagnosis = records[0][selectedIndex];
+                const ipfsHash = records[1][selectedIndex];
+                const timestamp = new Date(parseInt(records[2][selectedIndex], 10) * 1000).toLocaleString();
+
+                selectedRecordContainer.innerHTML = `
+                    <div class="record">
+                        <div class="form-group">
+                            <label>Description:</label>
+                            <textarea class="form-control" rows="3" style="color:white; background-color: #1c1c1c;" readonly>${ipfsHash}</textarea>
+                        </div>
+                        <p><strong>Last Updated:</strong> ${timestamp}</p>
+                    </div>`;
+            } catch (error) {
+                console.error("Error loading selected record:", error);
+                alert("Failed to load the selected record. Please try again.");
+            }
+        }
+
+        function closeRecordsPanel() {
+            document.getElementById("patientRecordsPanel").style.display = "none";
+            document.getElementById("recordDropdown").innerHTML = '<option value="" selected disabled>--Select Diagnosis--</option>'; // Reset dropdown
+            document.getElementById("selectedRecordContainer").innerHTML = ""; // Clear record details
         }
 
         initializePage(); // Initialize the page on load

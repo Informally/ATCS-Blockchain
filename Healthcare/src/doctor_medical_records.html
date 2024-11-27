@@ -148,7 +148,7 @@
                     <label for="newRecordDescription">Description:</label>
                     <textarea class="form-control" id="newRecordDescription" rows="4" placeholder="Enter record description"></textarea>
                 </div>
-                <button type="button" class="btn btn-primary" onclick="saveNewRecord()">Save Record</button>
+                <button type="button" class="btn btn-success" onclick="saveNewRecord()">Save Record</button>
                 <button type="button" class="btn btn-danger" onclick="closeCreateRecord()">Close</button>
             </div>
         </div>
@@ -159,43 +159,23 @@
     <script src="js/jquery.js"></script>
     <script src="js/bootstrap.min.js"></script>
     <script src="js/contractConfig.js"></script>
+    <script src="js/utils.js"></script>
     <script>
-        let web3;
-        let contractInstance;
         let currentPatient = null;
 
-        async function initializeWeb3() {
-            if (window.ethereum) {
-                web3 = new Web3(window.ethereum);
-                try {
-                    await window.ethereum.request({ method: "eth_requestAccounts" });
-                    console.log("MetaMask connected");
-
-                    contractInstance = new web3.eth.Contract(contractABI, contractAddress);
-                    console.log("Contract instance initialized");
-
-                    loadConnectedPatients();
-                } catch (error) {
-                    console.error("Error connecting to MetaMask:", error);
-                }
-            } else {
-                alert("Please install MetaMask to use this application.");
+        async function initializePage() {
+            try {
+                await validateLogin(); // Ensure the user is logged in
+                await validateRole("doctor"); // Ensure the user is a doctor
+                await initializeWeb3(); // Initialize Web3 and contract
+                loadConnectedPatients(); // Load all connected patients
+                attachLogout(); // Attach logout functionality
+            } catch (error) {
+                console.error("Error initializing the page:", error);
+                alert("An error occurred. Please log in again.");
+                location.href = "index.html";
             }
         }
-
-        window.onload = initializeWeb3;
-
-        window.onload = function () {
-            initializeWeb3();
-
-            // Attach logout functionality
-            const logoutButton = document.getElementById("logoutButton");
-            if (logoutButton) {
-                logoutButton.addEventListener("click", logout);
-            } else {
-                console.error("Logout button not found.");
-            }
-        };
 
         async function loadConnectedPatients() {
             const accounts = await web3.eth.getAccounts();
@@ -329,28 +309,7 @@
             document.getElementById("createRecordSection").style.display = "none";
         }
         
-        async function logout() {
-            const accounts = await web3.eth.getAccounts();
-            const publicKey = accounts[0];
-
-            try {
-                // Emit the logout event to the blockchain
-                await contractInstance.methods.log_patient_logout().send({ from: publicKey });
-                console.log("Logout event emitted to the blockchain.");
-            } catch (error) {
-                console.error("Error emitting logout event:", error);
-            }
-
-            // Clear session storage and reset
-            sessionStorage.clear();
-            console.log("Session cleared. User logged out.");
-
-            // Inform the user
-            alert("You have been logged out successfully!");
-
-            // Redirect to the login page
-            location.href = "./index.html";
-        }
+        document.addEventListener("DOMContentLoaded", initializePage);
     </script>
 </body>
 

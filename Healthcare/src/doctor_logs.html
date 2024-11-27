@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Doctor Logs</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+
+    <!-- Custom CSS -->
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+        }
+
+        .panel {
+            background-color: #1c1c1c;
+            border: 1px solid #333;
+            border-radius: 8px;
+        }
+
+        .panel-heading {
+            background-color: #282828;
+            border: none;
+            color: #ffffff;
+            text-align: center;
+            font-size: 1.5rem;
+            padding: 10px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+        }
+
+        .panel-body {
+            padding: 20px;
+        }
+
+        .table {
+            color: #ffffff;
+        }
+
+        .table th,
+        .table td {
+            border-top: none;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: #2a2a2a;
+            color: #ffffff;
+        }
+
+        .btn-navigation {
+            margin: 10px;
+            background-color: #2979ff;
+            border: none;
+            color: white;
+            padding: 10px 30px;
+            border-radius: 4px;
+            text-decoration: none;
+        }
+
+        .btn-navigation:hover {
+            background-color: #1e60cc;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-inverse navbar-static-top">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <a class="navbar-brand" href="doctor.html">Doctor Dashboard</a>
+            </div>
+            <ul class="nav navbar-nav navbar-right">
+                <li><a href="doctor.html">Dashboard</a></li>
+                <li><a href="doctor_medical_records.html">Medical Records</a></li>
+                <li><a id="logoutButton" href="#">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Page Content -->
+    <div class="container">
+        <div class="panel">
+            <div class="panel-heading">Doctor Activity Logs</div>
+            <div class="panel-body">
+                <table class="table table-hover" id="logTable">
+                    <thead>
+                        <tr>
+                            <th>Log ID</th>
+                            <th>Event Type</th>
+                            <th>Description</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Logs will be dynamically inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <script src="js/jquery.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/contractConfig.js"></script>
+    <script src="js/utils.js"></script>
+
+    <script>
+        async function initializePage() {
+            try {
+                await validateLogin(); // Ensure the user is logged in
+                await validateRole("doctor"); // Ensure the user is a doctor
+                await initializeWeb3(); // Initialize Web3
+                await loadDoctorLogs(); // Load logs
+                attachLogout(); // Attach logout functionality
+            } catch (error) {
+                console.error("Error initializing doctor logs page:", error);
+                alert("An error occurred. Redirecting to login page...");
+                location.href = "./index.html";
+            }
+        }
+
+        async function loadDoctorLogs() {
+            try {
+                const accounts = await web3.eth.getAccounts();
+                const publicKey = accounts[0];
+                const logTable = document.getElementById("logTable").getElementsByTagName("tbody")[0];
+                logTable.innerHTML = ""; // Clear existing logs
+
+                const logs = [];
+
+                // Fetch Doctor Login logs
+                const loginLogs = await contractInstance.getPastEvents("DoctorLoggedIn", {
+                    filter: { doctor: publicKey },
+                    fromBlock: 0,
+                    toBlock: "latest",
+                });
+
+                for (const log of loginLogs) {
+                    logs.push({
+                        eventType: "Login",
+                        description: "Doctor logged in.",
+                        timestamp: Number(log.returnValues.timestamp) * 1000,
+                    });
+                }
+
+                // Fetch Doctor Logout logs
+                const logoutLogs = await contractInstance.getPastEvents("DoctorLoggedOut", {
+                    filter: { doctor: publicKey },
+                    fromBlock: 0,
+                    toBlock: "latest",
+                });
+
+                for (const log of logoutLogs) {
+                    logs.push({
+                        eventType: "Logout",
+                        description: "Doctor logged out.",
+                        timestamp: Number(log.returnValues.timestamp) * 1000,
+                    });
+                }
+
+                // Fetch Medical Record Added logs
+                const addedLogs = await contractInstance.getPastEvents("MedicalRecordAdded", {
+                    filter: { addedBy: publicKey },
+                    fromBlock: 0,
+                    toBlock: "latest",
+                });
+
+                for (const log of addedLogs) {
+                    const patientName = await getAgentName(log.returnValues.patient);
+                    logs.push({
+                        eventType: "Record Created",
+                        description: `Medical record created for ${patientName}.`,
+                        timestamp: Number(log.returnValues.timestamp) * 1000,
+                    });
+                }
+
+                // Fetch Medical Record Edited logs
+                const editedLogs = await contractInstance.getPastEvents("MedicalRecordEdited", {
+                    filter: { editedBy: publicKey },
+                    fromBlock: 0,
+                    toBlock: "latest",
+                });
+
+                for (const log of editedLogs) {
+                    const patientName = await getAgentName(log.returnValues.patient);
+                    logs.push({
+                        eventType: "Record Edited",
+                        description: `Medical record edited for ${patientName}.`,
+                        timestamp: Number(log.returnValues.timestamp) * 1000,
+                    });
+                }
+
+                // Fetch Access Requested logs
+                const requestedLogs = await contractInstance.getPastEvents("AccessRequested", {
+                    filter: { doctor: publicKey },
+                    fromBlock: 0,
+                    toBlock: "latest",
+                });
+
+                for (const log of requestedLogs) {
+                    const patientName = await getAgentName(log.returnValues.patient);
+                    logs.push({
+                        eventType: "Access Requested",
+                        description: `Access request received from ${patientName}.`,
+                        timestamp: Number(log.returnValues.timestamp) * 1000,
+                    });
+                }
+
+                // Fetch Access Granted logs
+                const grantedLogs = await contractInstance.getPastEvents("AccessGranted", {
+                    filter: { doctor: publicKey },
+                    fromBlock: 0,
+                    toBlock: "latest",
+                });
+
+                for (const log of grantedLogs) {
+                    const patientName = await getAgentName(log.returnValues.patient);
+                    logs.push({
+                        eventType: "Access Granted",
+                        description: `Access granted to ${patientName}.`,
+                        timestamp: Number(log.returnValues.timestamp) * 1000,
+                    });
+                }
+
+                // Fetch Access Rejected logs
+                const rejectedLogs = await contractInstance.getPastEvents("AccessRejected", {
+                    filter: { doctor: publicKey },
+                    fromBlock: 0,
+                    toBlock: "latest",
+                });
+
+                for (const log of rejectedLogs) {
+                    const patientName = await getAgentName(log.returnValues.patient);
+                    logs.push({
+                        eventType: "Access Rejected",
+                        description: `Access rejected for ${patientName}.`,
+                        timestamp: Number(log.returnValues.timestamp) * 1000,
+                    });
+                }
+
+                // Sort logs by timestamp (descending)
+                logs.sort((a, b) => b.timestamp - a.timestamp);
+
+                // Assign Log ID starting from 1 at the bottom
+                logs.reverse().forEach((log, index) => {
+                    log.logId = index + 1; // Assign incrementing Log ID
+                });
+
+                // Reverse back to descending order
+                logs.reverse();
+
+                // Populate table
+                logs.forEach((log, index) => {
+                    const row = logTable.insertRow();
+                    row.innerHTML = `
+                        <td>${log.logId}</td>
+                        <td>${log.eventType}</td>
+                        <td>${log.description}</td>
+                        <td>${new Date(log.timestamp).toLocaleString()}</td>
+                    `;
+                });
+
+                if (logs.length === 0) {
+                    const row = logTable.insertRow();
+                    row.innerHTML = `<td colspan="4" class="text-center">No logs available.</td>`;
+                }
+            } catch (error) {
+                console.error("Error loading logs:", error);
+            }
+        }
+
+        initializePage(); // Initialize the page on load
+
+    </script>
+</body>
+
+</html>
