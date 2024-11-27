@@ -56,28 +56,6 @@
             color: #ffffff;
         }
 
-        .form-group label {
-            color: #ffffff;
-        }
-
-        .form-control {
-            background-color: #333;
-            color: #ffffff;
-            border: 1px solid #555;
-        }
-
-        .form-control:focus {
-            background-color: #333;
-            color: #ffffff;
-            border-color: #2979ff;
-            outline: none;
-            box-shadow: none;
-        }
-
-        .description-section {
-            margin-top: 20px;
-        }
-
         .btn-navigation {
             margin: 10px;
             background-color: #2979ff;
@@ -92,38 +70,48 @@
             background-color: #1e60cc;
         }
 
-        #recordsSection {
-            margin-top: 10px;
+        .form-control {
+            background-color: #1c1c1c;
+            color: #ffffff;
+            border: 1px solid #333;
+            border-radius: 4px;
+            box-shadow: none;
+            outline: none;
         }
 
-        .btn-close {
-            margin-top: -7px;
+        .form-control:hover,
+        .form-control:focus {
+            background-color: #282828;
+            border-color: #2979ff;
+            color: #ffffff;
+        }
+
+        .form-control option {
+            background-color: #1c1c1c;
+            color: #ffffff;
+        }
+
+        .form-control option:hover {
+            background-color: #282828;
+            color: #ffffff;
         }
     </style>
 </head>
 
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-inverse navbar-static-top" role="navigation">
+    <nav class="navbar navbar-inverse navbar-static-top">
         <div class="container-fluid">
             <div class="navbar-header">
-                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar-collapse">
-                    <span class="sr-only">Toggle navigation</span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                </button>
                 <a class="navbar-brand" href="#">Doctor Dashboard</a>
             </div>
-            <div class="collapse navbar-collapse" id="navbar-collapse">
-                <ul class="nav navbar-nav navbar-right">
-                    <li><a id="logoutButton" href="#">Logout</a></li>
-                </ul>
-            </div>
+            <ul class="nav navbar-nav navbar-right">
+                <li><a id="logoutButton" href="#">Logout</a></li>
+            </ul>
         </div>
     </nav>
 
-    <!-- Page Content -->
+    <!-- Main Content -->
     <div class="container">
         <!-- Personal Information -->
         <div class="panel">
@@ -176,32 +164,12 @@
             </div>
         </div>
 
-        <!-- Record Viewing Section -->
-        <div class="panel" id="recordsSection" style="display: none;">
-            <div class="panel-heading">
-                View Records
-                <button type="button" class="btn btn-danger btn-sm pull-right btn-close" onclick="closeRecordsSection()">Close</button>
-            </div>
-            <div class="panel-body">
-                <div class="form-group">
-                    <label for="recordDropdown">Select Record:</label>
-                    <select class="form-control" id="recordDropdown" onchange="loadRecordDescription()">
-                        <option value="">--Please Select--</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="recordDescription">Description:</label>
-                    <textarea class="form-control" id="recordDescription" style="background-color:#333" rows="4" readonly></textarea>
-                </div>
-            </div>
-        </div>
-
         <!-- Additional Functions -->
         <div class="panel">
             <div class="panel-heading">Additional Functions</div>
             <div class="panel-body text-center">
                 <a href="doctor_medical_records.html" class="btn-navigation">Medical Records</a>
-                <a href="doctor_logs.html" class="btn-navigation" style="padding: 10px 50px;">View Logs</a>
+                <a href="doctor_logs.html" class="btn-navigation">View Logs</a>
             </div>
         </div>
     </div>
@@ -211,46 +179,21 @@
     <script src="js/jquery.js"></script>
     <script src="js/bootstrap.min.js"></script>
     <script src="js/contractConfig.js"></script>
-
+    <script src="js/utils.js"></script>
     <script>
-        let web3;
-        let contractInstance;
-        let currentPatientAddress = "";
-
-        async function initializeWeb3() {
-            if (window.ethereum) {
-                web3 = new Web3(window.ethereum);
-                try {
-                    await window.ethereum.request({ method: "eth_requestAccounts" });
-                    console.log("MetaMask connected");
-
-                    contractInstance = new web3.eth.Contract(contractABI, contractAddress);
-                    console.log("Contract instance initialized");
-
-                    loadDoctorDetails();
-                    loadAccessRequests();
-                    loadConnectedPatients();
-                } catch (error) {
-                    console.error("Error connecting to MetaMask:", error);
-                }
-            } else {
-                alert("Please install MetaMask to use this application.");
+        async function initializePage() {
+            try {
+                await validateLogin(); // Ensure the user is logged in
+                await validateRole("doctor"); // Ensure the user is a doctor
+                await initializeWeb3(); // Set up Web3
+                await loadDoctorDetails(); // Load doctor's personal information
+                await loadAccessRequests(); // Load pending access requests
+                await loadConnectedPatients(); // Load accessible EHRs
+                attachLogout(); // Attach logout functionality
+            } catch (error) {
+                console.error("Error initializing doctor dashboard:", error);
             }
         }
-
-        window.onload = initializeWeb3;
-
-        window.onload = function () {
-            initializeWeb3();
-
-            // Attach logout functionality
-            const logoutButton = document.getElementById("logoutButton");
-            if (logoutButton) {
-                logoutButton.addEventListener("click", logout);
-            } else {
-                console.error("Logout button not found.");
-            }
-        };
 
         async function loadDoctorDetails() {
             const accounts = await web3.eth.getAccounts();
@@ -263,113 +206,49 @@
         async function loadAccessRequests() {
             const accounts = await web3.eth.getAccounts();
             const publicKey = accounts[0];
-
             const accessRequests = await contractInstance.methods.get_access_requests(publicKey).call();
-            const accessRequestsTable = document.getElementById("accessRequestsTable");
+            const table = document.getElementById("accessRequestsTable");
+            table.innerHTML = ""; // Clear existing rows
 
-            accessRequestsTable.innerHTML = "";
-
-            for (const request of accessRequests) {
-                const patientDetails = await contractInstance.methods.get_patient(request).call();
-                const patientName = patientDetails[0];
-
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td>${patientName}</td>
-                    <td>${request}</td>
-                    <td>
-                        <button class="btn btn-success" onclick="acceptRequest('${request}')">Accept</button>
-                        <button class="btn btn-danger" onclick="rejectRequest('${request}')">Reject</button>
-                    </td>
-                `;
-                accessRequestsTable.appendChild(row);
+            for (const patient of accessRequests) {
+                const patientData = await contractInstance.methods.get_patient(patient).call();
+                const row = `
+                    <tr>
+                        <td>${patientData[0]}</td>
+                        <td>${patient}</td>
+                        <td>
+                            <button class="btn btn-success" onclick="acceptRequest('${patient}')">Accept</button>
+                            <button class="btn btn-danger" onclick="rejectRequest('${patient}')">Reject</button>
+                        </td>
+                    </tr>`;
+                table.innerHTML += row;
             }
         }
 
         async function loadConnectedPatients() {
             const accounts = await web3.eth.getAccounts();
             const publicKey = accounts[0];
-
             const connectedPatients = await contractInstance.methods.get_accessed_patientlist_for_doctor(publicKey).call();
-            const connectedPatientsTable = document.getElementById("connectedPatientsTable");
-
-            connectedPatientsTable.innerHTML = "";
+            const table = document.getElementById("connectedPatientsTable");
+            table.innerHTML = ""; // Clear existing rows
 
             for (const patient of connectedPatients) {
-                const patientDetails = await contractInstance.methods.get_patient(patient).call();
-                const patientName = patientDetails[0];
-
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td>${patientName}</td>
-                    <td>${patient}</td>
-                    <td><button class="btn btn-primary" onclick="viewRecords('${patient}')">View Records</button></td>
-                `;
-                connectedPatientsTable.appendChild(row);
+                const patientData = await contractInstance.methods.get_patient(patient).call();
+                const row = `
+                    <tr>
+                        <td>${patientData[0]}</td>
+                        <td>${patient}</td>
+                        <td><button class="btn btn-primary" onclick="viewRecords('${patient}')">View Records</button></td>
+                    </tr>`;
+                table.innerHTML += row;
             }
         }
 
-        async function viewRecords(patientAddress) {
-            currentPatientAddress = patientAddress;
-
-            try {
-                const result = await contractInstance.methods.getMedicalRecords(patientAddress).call();
-                const diagnoses = Array.from(result[0]);
-
-                if (diagnoses.length === 0) {
-                    alert("The selected patient has no records.");
-                    return;
-                }
-
-                const recordDropdown = document.getElementById("recordDropdown");
-                recordDropdown.innerHTML = '<option value="">--Please Select--</option>';
-
-                diagnoses.forEach((diagnosis, index) => {
-                    const option = document.createElement("option");
-                    option.value = index;
-                    option.textContent = diagnosis;
-                    recordDropdown.appendChild(option);
-                });
-
-                document.getElementById("recordsSection").style.display = "block";
-            } catch (error) {
-                console.error("Error fetching records:", error);
-            }
-        }
-
-        async function loadRecordDescription() {
-            const recordDropdown = document.getElementById("recordDropdown");
-            const selectedIndex = recordDropdown.value;
-
-            // Clear description if "--Please Select--" is selected
-            if (!selectedIndex || selectedIndex === "" || selectedIndex === "--Please Select--") {
-                document.getElementById("recordDescription").value = "";
-                return;
-            }
-
-            try {
-                const result = await contractInstance.methods.getMedicalRecords(currentPatientAddress).call();
-                const descriptions = Array.from(result[1]);
-
-                // Ensure selectedIndex is within bounds to prevent errors
-                if (selectedIndex >= 0 && selectedIndex < descriptions.length) {
-                    document.getElementById("recordDescription").value = descriptions[selectedIndex];
-                } else {
-                    document.getElementById("recordDescription").value = ""; // Clear if invalid index
-                }
-            } catch (error) {
-                console.error("Error fetching description:", error);
-                document.getElementById("recordDescription").value = ""; // Clear on error
-            }
-        }
-
-        async function acceptRequest(patientAddress) {
+        async function acceptRequest(patient) {
             const accounts = await web3.eth.getAccounts();
-            const publicKey = accounts[0];
-
             try {
-                await contractInstance.methods.accept_access_request(patientAddress).send({ from: publicKey, gas: 1000000 });
-                alert("Access granted successfully!");
+                await contractInstance.methods.accept_access_request(patient).send({ from: accounts[0], gas: 3000000 });
+                alert("Access granted!");
                 loadAccessRequests();
                 loadConnectedPatients();
             } catch (error) {
@@ -377,53 +256,18 @@
             }
         }
 
-        async function rejectRequest(patientAddress) {
+        async function rejectRequest(patient) {
             const accounts = await web3.eth.getAccounts();
-            const publicKey = accounts[0];
-
             try {
-                await contractInstance.methods.reject_access_request(patientAddress).send({ from: publicKey, gas: 1000000 });
-                alert("Access request rejected!");
+                await contractInstance.methods.reject_access_request(patient).send({ from: accounts[0], gas: 3000000 });
+                alert("Access rejected!");
                 loadAccessRequests();
             } catch (error) {
                 console.error("Error rejecting access request:", error);
             }
         }
 
-        function closeRecordsSection() {
-            // Clear the dropdown selection and reset to default
-            const recordDropdown = document.getElementById("recordDropdown");
-            recordDropdown.value = ""; // Reset dropdown to default value
-
-            // Clear the description field
-            document.getElementById("recordDescription").value = "";
-
-            // Hide the records section
-            document.getElementById("recordsSection").style.display = "none";
-        }
-        
-        async function logout() {
-            const accounts = await web3.eth.getAccounts();
-            const publicKey = accounts[0];
-
-            try {
-                // Emit the logout event to the blockchain
-                await contractInstance.methods.log_patient_logout().send({ from: publicKey });
-                console.log("Logout event emitted to the blockchain.");
-            } catch (error) {
-                console.error("Error emitting logout event:", error);
-            }
-
-            // Clear session storage and reset
-            sessionStorage.clear();
-            console.log("Session cleared. User logged out.");
-
-            // Inform the user
-            alert("You have been logged out successfully!");
-
-            // Redirect to the login page
-            location.href = "./index.html";
-        }
+        initializePage(); // Initialize the page on load
     </script>
 </body>
 

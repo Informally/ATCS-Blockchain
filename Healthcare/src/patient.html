@@ -183,38 +183,28 @@
     <script src="js/jquery.js"></script>
     <script src="js/bootstrap.min.js"></script>
     <script src="js/contractConfig.js"></script>
+    <script src="js/utils.js"></script>
 
     <script>
-        let web3;
-        let contractInstance;
+        
+        document.addEventListener("DOMContentLoaded", async () => {
+            try {
+                // Initialize Web3 and validate session and role
+                const web3Initialized = await initializeWeb3();
+                if (!web3Initialized) throw new Error("Web3 not initialized.");
 
-        async function initializeWeb3() {
-            const loggedInUser = sessionStorage.getItem("loggedInUser");
-            if (!loggedInUser) {
+                await validateRole("patient"); // Validate patient role
+
+                attachLogout(); // Attach logout functionality
+                await loadPatientDetails(); // Load patient details
+                await loadDoctorList(); // Load list of doctors
+                await loadAccessList(); // Load current access list
+            } catch (error) {
+                console.error("Error initializing patient page:", error);
                 alert("You must log in first!");
                 location.href = "./index.html";
-                return;
             }
-
-            if (window.ethereum) {
-                web3 = new Web3(window.ethereum);
-                try {
-                    await window.ethereum.request({ method: "eth_requestAccounts" });
-                    contractInstance = new web3.eth.Contract(contractABI, contractAddress);
-                    console.log("MetaMask connected");
-                    await loadPatientDetails();
-                    await loadDoctorList();
-                    await loadAccessList();
-                } catch (error) {
-                    console.error("Error connecting to MetaMask:", error);
-                    alert("Failed to connect to MetaMask.");
-                }
-            } else {
-                alert("Please install MetaMask.");
-            }
-        }
-
-        window.onload = initializeWeb3;
+        });
 
         async function loadPatientDetails() {
             const accounts = await web3.eth.getAccounts();
@@ -229,19 +219,19 @@
         }
 
         async function loadDoctorList() {
-            const doctorList = await contractInstance.methods.get_doctor_list().call();
-            const doctorSelect = document.getElementById("doctorSelect");
-            doctorSelect.innerHTML = `<option value="" selected>-- Please Select --</option>`;
-            for (const doctor of doctorList) {
-                try {
+            try {
+                const doctorList = await contractInstance.methods.get_doctor_list().call();
+                const doctorSelect = document.getElementById("doctorSelect");
+                doctorSelect.innerHTML = `<option value="" selected>-- Please Select --</option>`;
+                for (const doctor of doctorList) {
                     const doctorDetails = await contractInstance.methods.get_doctor(doctor).call();
                     const option = document.createElement("option");
                     option.value = doctor;
                     option.textContent = doctorDetails[0];
                     doctorSelect.appendChild(option);
-                } catch (error) {
-                    console.error(`Error loading doctor details:`, error);
                 }
+            } catch (error) {
+                console.error("Error loading doctor list:", error);
             }
         }
 
@@ -250,14 +240,11 @@
             const publicKey = accounts[0];
             try {
                 const accessList = await contractInstance.methods.get_accessed_doctorlist_for_patient(publicKey).call();
-                const doctorList = await contractInstance.methods.get_doctor_list().call();
                 const accessTable = document.getElementById("accessTable");
                 accessTable.innerHTML = "";
-                for (const doctor of doctorList) {
+                for (const doctor of accessList) {
                     const doctorDetails = await contractInstance.methods.get_doctor(doctor).call();
-                    const isAccessed = accessList.includes(doctor);
-                    const status = isAccessed ? "Access Granted" : "No Access";
-                    const row = `<tr><td>${doctorDetails[0]}</td><td>${doctor}</td><td>${status}</td></tr>`;
+                    const row = `<tr><td>${doctorDetails[0]}</td><td>${doctor}</td><td>Access Granted</td></tr>`;
                     accessTable.innerHTML += row;
                 }
             } catch (error) {
@@ -281,21 +268,6 @@
                 alert("Failed to request access.");
             }
         }
-
-        async function logout() {
-            const accounts = await web3.eth.getAccounts();
-            try {
-                await contractInstance.methods.log_patient_logout().send({ from: accounts[0] });
-                console.log("Patient logged out.");
-            } catch (error) {
-                console.error("Error logging out:", error);
-            }
-            sessionStorage.removeItem("loggedInUser");
-            alert("Logged out successfully.");
-            location.href = "./index.html";
-        }
-
-        document.getElementById("logoutButton").addEventListener("click", logout);
     </script>
 </body>
 

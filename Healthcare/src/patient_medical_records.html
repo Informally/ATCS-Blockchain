@@ -139,42 +139,24 @@
     <script src="js/jquery.js"></script>
     <script src="js/bootstrap.min.js"></script>
     <script src="js/contractConfig.js"></script>
+    <script src="js/utils.js"></script>
+
     <script>
-        let web3;
-        let contractInstance;
         let editingIndex = -1;
 
-        async function initializeWeb3() {
-            if (window.ethereum) {
-                web3 = new Web3(window.ethereum);
-                try {
-                    await window.ethereum.request({ method: "eth_requestAccounts" });
-                    contractInstance = new web3.eth.Contract(contractABI, contractAddress);
-                    await loadMedicalRecords();
-                } catch (error) {
-                    console.error("Error connecting to MetaMask:", error);
-                }
-            } else {
-                alert("Please install MetaMask.");
+        async function initializePage() {
+            try {
+                await validateLogin(); // Ensure the user is logged in
+                await validateRole("patient"); // Ensure the user is a patient
+                await initializeWeb3(); // Initialize Web3
+                await loadMedicalRecords(); // Load existing medical records
+                attachLogout(); // Attach logout functionality
+            } catch (error) {
+                console.error("Error initializing medical records page:", error);
             }
         }
 
-        window.onload = initializeWeb3;
-
-        window.onload = function () {
-            initializeWeb3();
-
-            // Attach logout functionality
-            const logoutButton = document.getElementById("logoutButton");
-            if (logoutButton) {
-                logoutButton.addEventListener("click", logout);
-            } else {
-                console.error("Logout button not found.");
-            }
-        };
-
         async function createMedicalRecord() {
-            const accounts = await web3.eth.getAccounts();
             const diagnosis = document.getElementById("diagnosis").value;
             const description = document.getElementById("description").value;
 
@@ -184,23 +166,23 @@
             }
 
             try {
-                await contractInstance.methods
-                    .addRecordByPatient(diagnosis, description)
-                    .send({ from: accounts[0], gas: 3000000 });
+                const accounts = await web3.eth.getAccounts();
+                await contractInstance.methods.addRecordByPatient(diagnosis, description).send({ from: accounts[0] });
                 alert("Medical record created successfully!");
                 document.getElementById("medicalRecordForm").reset();
                 loadMedicalRecords();
             } catch (error) {
                 console.error("Error saving record:", error);
+                alert("Failed to save record.");
             }
         }
 
         async function loadMedicalRecords() {
-            const accounts = await web3.eth.getAccounts();
-            const publicKey = accounts[0];
-
             try {
+                const accounts = await web3.eth.getAccounts();
+                const publicKey = accounts[0];
                 const result = await contractInstance.methods.getMedicalRecords(publicKey).call();
+
                 const tableBody = document.getElementById("medicalRecordsTable");
                 tableBody.innerHTML = "";
 
@@ -214,7 +196,6 @@
                     });
                 });
 
-                // Sort records by timestamp in descending order
                 records.sort((a, b) => b.timestamp - a.timestamp);
 
                 records.forEach((record) => {
@@ -229,7 +210,7 @@
                     tableBody.innerHTML += row;
                 });
             } catch (error) {
-                console.error("Error loading records:", error);
+                console.error("Error loading medical records:", error);
             }
         }
 
@@ -241,7 +222,6 @@
         }
 
         async function saveEditedDescription() {
-            const accounts = await web3.eth.getAccounts();
             const newDescription = document.getElementById("newDescription").value;
 
             if (editingIndex === -1 || !newDescription.trim()) {
@@ -250,9 +230,8 @@
             }
 
             try {
-                await contractInstance.methods
-                    .editPatientRecord(editingIndex, newDescription)
-                    .send({ from: accounts[0], gas: 3000000 });
+                const accounts = await web3.eth.getAccounts();
+                await contractInstance.methods.editPatientRecord(editingIndex, newDescription).send({ from: accounts[0] });
                 alert("Record updated successfully!");
                 document.getElementById("descriptionPanel").style.display = "none";
                 loadMedicalRecords();
@@ -260,29 +239,8 @@
                 console.error("Error updating record:", error);
             }
         }
-        
-        async function logout() {
-            const accounts = await web3.eth.getAccounts();
-            const publicKey = accounts[0];
 
-            try {
-                // Emit the logout event to the blockchain
-                await contractInstance.methods.log_patient_logout().send({ from: publicKey });
-                console.log("Logout event emitted to the blockchain.");
-            } catch (error) {
-                console.error("Error emitting logout event:", error);
-            }
-
-            // Clear session storage and reset
-            sessionStorage.clear();
-            console.log("Session cleared. User logged out.");
-
-            // Inform the user
-            alert("You have been logged out successfully!");
-
-            // Redirect to the login page
-            location.href = "./index.html";
-        }
+        initializePage(); // Initialize the page on load
     </script>
 </body>
 

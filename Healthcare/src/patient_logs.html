@@ -34,7 +34,8 @@
             text-align: left;
         }
 
-        .table th, .table td {
+        .table th,
+        .table td {
             padding: 12px;
             border: 1px solid #333;
         }
@@ -43,7 +44,6 @@
             background-color: #2c2c2c;
             color: #2979ff;
         }
-
     </style>
 </head>
 
@@ -88,66 +88,28 @@
     <script src="js/jquery.js"></script>
     <script src="js/bootstrap.min.js"></script>
     <script src="js/contractConfig.js"></script>
+    <script src="js/utils.js"></script>
 
     <script>
-        let web3;
-        let contractInstance;
-    
-        async function initializeWeb3() {
-            if (window.ethereum) {
-                web3 = new Web3(window.ethereum);
-                try {
-                    await window.ethereum.request({ method: "eth_requestAccounts" });
-                    console.log("MetaMask connected");
-    
-                    contractInstance = new web3.eth.Contract(contractABI, contractAddress);
-                    console.log("Contract instance initialized");
-    
-                    loadPatientLogs();
-                } catch (error) {
-                    console.error("Error connecting to MetaMask:", error);
-                    alert("Failed to connect to MetaMask. Please ensure it is installed and connected.");
-                }
-            } else {
-                alert("Please install MetaMask to use this application.");
-            }
-        }
-    
-        window.onload = function () {
-            initializeWeb3();
-    
-            // Attach logout functionality
-            const logoutButton = document.getElementById("logoutButton");
-            if (logoutButton) {
-                logoutButton.addEventListener("click", logout);
-            } else {
-                console.error("Logout button not found.");
-            }
-        };
-    
-        async function getAgentName(address) {
-            if (!web3.utils.isAddress(address)) {
-                console.error(`Invalid address: ${address}`);
-                return "Unknown";
-            }
-    
+        async function initializePage() {
             try {
-                // Use the smart contract's getAgentName function
-                return await contractInstance.methods.getAgentName(address).call();
+                await validateLogin(); // Ensure the user is logged in
+                await validateRole("patient"); // Ensure the user is a patient
+                await initializeWeb3(); // Initialize Web3
+                await loadPatientLogs(); // Load logs
+                attachLogout(); // Attach logout functionality
             } catch (error) {
-                console.error(`Error fetching agent name for address ${address}:`, error);
-                return "Unknown";
+                console.error("Error initializing logs page:", error);
             }
         }
-    
+
         async function loadPatientLogs() {
-            const accounts = await web3.eth.getAccounts();
-            const publicKey = accounts[0];
-
-            const logTable = document.getElementById("logTable").getElementsByTagName("tbody")[0];
-            logTable.innerHTML = ""; // Clear existing logs
-
             try {
+                const accounts = await web3.eth.getAccounts();
+                const publicKey = accounts[0];
+                const logTable = document.getElementById("logTable").getElementsByTagName("tbody")[0];
+                logTable.innerHTML = ""; // Clear existing logs
+
                 const logs = [];
 
                 // Fetch Medical Record Added logs
@@ -160,10 +122,10 @@
                 for (const log of addedLogs) {
                     const addedByName = await getAgentName(log.returnValues.addedBy);
                     logs.push({
-                        eventType: "Record Create",
-                        description: `New medical record created by ${addedByName}.`,
+                        eventType: "Record Created",
+                        description: `Medical record created by ${addedByName}.`,
                         timestamp: Number(log.returnValues.timestamp) * 1000,
-                        action: "Record Created"
+                        action: "Record Created",
                     });
                 }
 
@@ -177,14 +139,14 @@
                 for (const log of editedLogs) {
                     const editedByName = await getAgentName(log.returnValues.editedBy);
                     logs.push({
-                        eventType: "Record Edit",
+                        eventType: "Record Edited",
                         description: `Medical record edited by ${editedByName}.`,
                         timestamp: Number(log.returnValues.timestamp) * 1000,
-                        action: "Edit Saved"
+                        action: "Record Edited",
                     });
                 }
 
-                // Fetch Patient Login logs
+                // Fetch Login logs
                 const loginLogs = await contractInstance.getPastEvents("PatientLoggedIn", {
                     filter: { patient: publicKey },
                     fromBlock: 0,
@@ -194,13 +156,64 @@
                 for (const log of loginLogs) {
                     logs.push({
                         eventType: "Login",
-                        description: `Patient logged in successfully.`,
+                        description: "Patient logged in.",
                         timestamp: Number(log.returnValues.timestamp) * 1000,
-                        action: "Logged In"
+                        action: "Logged In",
                     });
                 }
 
-                // Fetch Patient Logout logs
+                // Fetch Access Requested logs
+                const requestLogs = await contractInstance.getPastEvents("AccessRequested", {
+                    filter: { patient: publicKey },
+                    fromBlock: 0,
+                    toBlock: "latest",
+                });
+
+                for (const log of requestLogs) {
+                    const doctorName = await getAgentName(log.returnValues.doctor);
+                    logs.push({
+                        eventType: "Access Requested",
+                        description: `Access request sent to ${doctorName} (${log.returnValues.doctor}).`,
+                        timestamp: Number(log.returnValues.timestamp) * 1000,
+                        action: "Request Sent",
+                    });
+                }
+
+                // Fetch Access Granted logs
+                const grantedLogs = await contractInstance.getPastEvents("AccessGranted", {
+                    filter: { patient: publicKey },
+                    fromBlock: 0,
+                    toBlock: "latest",
+                });
+
+                for (const log of grantedLogs) {
+                    const doctorName = await getAgentName(log.returnValues.doctor);
+                    logs.push({
+                        eventType: "Access Granted",
+                        description: `Access granted by ${doctorName} (${log.returnValues.doctor}).`,
+                        timestamp: Number(log.returnValues.timestamp) * 1000,
+                        action: "Granted",
+                    });
+                }
+
+                // Fetch Access Rejected logs
+                const rejectedLogs = await contractInstance.getPastEvents("AccessRejected", {
+                    filter: { patient: publicKey },
+                    fromBlock: 0,
+                    toBlock: "latest",
+                });
+
+                for (const log of rejectedLogs) {
+                    const doctorName = await getAgentName(log.returnValues.doctor);
+                    logs.push({
+                        eventType: "Access Rejected",
+                        description: `Access request rejected by ${doctorName} (${log.returnValues.doctor}).`,
+                        timestamp: Number(log.returnValues.timestamp) * 1000,
+                        action: "Rejected",
+                    });
+                }
+
+                // Fetch Logout logs
                 const logoutLogs = await contractInstance.getPastEvents("PatientLoggedOut", {
                     filter: { patient: publicKey },
                     fromBlock: 0,
@@ -210,13 +223,13 @@
                 for (const log of logoutLogs) {
                     logs.push({
                         eventType: "Logout",
-                        description: `Patient logged out successfully.`,
+                        description: "Patient logged out.",
                         timestamp: Number(log.returnValues.timestamp) * 1000,
-                        action: "Logged Out"
+                        action: "Logged Out",
                     });
                 }
 
-                // Sort logs in ascending order by timestamp
+                // Sort logs by timestamp (descending)
                 logs.sort((a, b) => b.timestamp - a.timestamp);
 
                 // Assign Log ID starting from 1 at the bottom
@@ -228,7 +241,7 @@
                 logs.reverse();
 
                 // Populate table
-                logs.forEach((log) => {
+                logs.forEach((log, index) => {
                     const row = logTable.insertRow();
                     row.innerHTML = `
                         <td>${log.logId}</td>
@@ -241,52 +254,14 @@
 
                 if (logs.length === 0) {
                     const row = logTable.insertRow();
-                    row.innerHTML = `<td colspan="5" class="text-center">No logs found.</td>`;
+                    row.innerHTML = `<td colspan="5" class="text-center">No logs available.</td>`;
                 }
             } catch (error) {
-                console.error("Error loading patient logs:", error);
-                alert("An error occurred while loading logs. Please try again later.");
+                console.error("Error loading logs:", error);
             }
         }
 
-    
-        function appendLogoutLog() {
-            const logTable = document.getElementById("logTable").getElementsByTagName("tbody")[0];
-            const timestamp = new Date();
-    
-            const row = logTable.insertRow();
-            row.innerHTML = `
-                <td>New</td>
-                <td>Logout</td>
-                <td>Patient logged out successfully.</td>
-                <td>${timestamp.toLocaleString()}</td>
-                <td>Logged Out</td>
-            `;
-        }
-    
-        async function logout() {
-            const accounts = await web3.eth.getAccounts();
-            const publicKey = accounts[0];
-
-            try {
-                // Emit the logout event to the blockchain
-                await contractInstance.methods.log_patient_logout().send({ from: publicKey });
-                console.log("Logout event emitted to the blockchain.");
-            } catch (error) {
-                console.error("Error emitting logout event:", error);
-            }
-
-            // Clear session storage and reset
-            sessionStorage.clear();
-            console.log("Session cleared. User logged out.");
-
-            // Inform the user
-            alert("You have been logged out successfully!");
-
-            // Redirect to the login page
-            location.href = "./index.html";
-        }
-
+        initializePage(); // Initialize the page
     </script>
 </body>
 

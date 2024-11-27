@@ -114,6 +114,7 @@
         let web3;
         let contractInstance;
 
+        // Initialize Web3 on Page Load
         async function initializeWeb3() {
             if (window.ethereum) {
                 web3 = new Web3(window.ethereum);
@@ -131,49 +132,44 @@
             }
         }
 
+        // Ensure MetaMask is initialized on load
         window.onload = initializeWeb3;
 
+        // Login Function
         async function login() {
-            if (window.ethereum) {
-                try {
-                    const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-                    const publicKey = accounts[0];
-                    console.log("Logged in as:", publicKey);
-
-                    // Emit the login event
-                    try {
-                        await contractInstance.methods.log_patient_login().send({ from: publicKey, gas: 100000 });
-                        console.log("Login event emitted to blockchain.");
-                    } catch (emitError) {
-                        console.error("Error emitting login event:", emitError);
-                        alert("Login failed due to a blockchain error.");
-                        return;
-                    }
-
-                    // Check user role
-                    const patient = await contractInstance.methods.get_patient(publicKey).call();
-                    const doctor = await contractInstance.methods.get_doctor(publicKey).call();
-
-                    if (patient[0]) {
-                        console.log("User is a patient.");
-                        sessionStorage.setItem("loggedInUser", publicKey);
-                        alert("Login successful as Patient!");
-                        location.href = "./patient.html";
-                    } else if (doctor[0]) {
-                        console.log("User is a doctor.");
-                        sessionStorage.setItem("loggedInUser", publicKey);
-                        alert("Login successful as Doctor!");
-                        location.href = "./doctor.html";
-                    } else {
-                        alert("User not registered. Please register first.");
-                        location.href = "./register.html";
-                    }
-                } catch (error) {
-                    console.error("Error during login:", error);
-                    alert("Failed to log in. Please try again.");
+            try {
+                if (!web3) {
+                    alert("Please install MetaMask to use this application.");
+                    return;
                 }
-            } else {
-                alert("Please install MetaMask to use this application.");
+
+                const accounts = await web3.eth.getAccounts();
+                const publicKey = accounts[0];
+
+                // Check if the user is a registered patient
+                const patient = await contractInstance.methods.get_patient(publicKey).call();
+                if (patient[0]) {
+                    console.log("Patient detected. Logging in...");
+                    await contractInstance.methods.log_patient_login().send({ from: publicKey, gas: 100000 });
+                    sessionStorage.setItem("loggedInUser", publicKey);
+                    location.href = "./patient.html";
+                    return;
+                }
+
+                // Check if the user is a registered doctor
+                const doctor = await contractInstance.methods.get_doctor(publicKey).call();
+                if (doctor[0]) {
+                    console.log("Doctor detected. Logging in...");
+                    await contractInstance.methods.log_doctor_login().send({ from: publicKey, gas: 100000 });
+                    sessionStorage.setItem("loggedInUser", publicKey);
+                    location.href = "./doctor.html";
+                    return;
+                }
+
+                alert("Unrecognized user role. Please register first.");
+            } catch (error) {
+                console.error("Error during login:", error);
+                alert("Login failed. Please try again.");
             }
         }
     </script>
