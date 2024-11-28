@@ -183,17 +183,15 @@
     <script src="js/jquery.js"></script>
     <script src="js/bootstrap.min.js"></script>
     <script src="js/contractConfig.js"></script>
-    <script src="js/utils.js"></script>
+    <script src="js/utils.js"></script> <!-- Include utils.js -->
 
     <script>
-        
         document.addEventListener("DOMContentLoaded", async () => {
             try {
-                // Initialize Web3 and validate session and role
                 const web3Initialized = await initializeWeb3();
                 if (!web3Initialized) throw new Error("Web3 not initialized.");
 
-                await validateRole("patient"); // Validate patient role
+                await initializePage("patient"); // Validate patient role and initialize
 
                 attachLogout(); // Attach logout functionality
                 await loadPatientDetails(); // Load patient details
@@ -258,30 +256,22 @@
                 alert("Please select a doctor.");
                 return;
             }
-
             const accounts = await web3.eth.getAccounts();
             const publicKey = accounts[0];
-
             try {
-                // Get the current list of doctors with access
                 const accessList = await contractInstance.methods.get_accessed_doctorlist_for_patient(publicKey).call();
-
-                // Check if the selected doctor is already in the access list
                 if (accessList.includes(doctorAddress)) {
                     alert("You already have access to this doctor.");
                     return;
                 }
-
-                // Send access request if not already granted
                 await contractInstance.methods.request_access(doctorAddress).send({ from: accounts[0] });
                 alert("Request sent!");
-                await loadAccessList(); // Refresh the access list
+                await loadAccessList();
             } catch (error) {
                 console.error("Error requesting access:", error);
                 alert("Failed to request access.");
             }
         }
-
     </script>
 </body>
 

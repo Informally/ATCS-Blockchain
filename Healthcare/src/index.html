@@ -39,7 +39,7 @@
             transform: translateY(-50%);
             text-align: center;
             color: white;
-            background-color: rgba(0, 0, 0, 1);
+            background-color: rgba(0, 0, 0, 0.7);
             padding: 30px;
             border-radius: 10px;
             width: 500px;
@@ -126,6 +126,7 @@
                     console.log("Contract instance initialized");
                 } catch (error) {
                     console.error("Error connecting to MetaMask:", error);
+                    alert("Please connect your MetaMask wallet to proceed.");
                 }
             } else {
                 alert("Please install MetaMask to use this application.");
@@ -137,41 +138,59 @@
 
         // Login Function
         async function login() {
-            try {
-                if (!web3) {
-                    alert("Please install MetaMask to use this application.");
-                    return;
-                }
-
-                const accounts = await web3.eth.getAccounts();
-                const publicKey = accounts[0];
-
-                // Check if the user is a registered patient
-                const patient = await contractInstance.methods.get_patient(publicKey).call();
-                if (patient[0]) {
-                    console.log("Patient detected. Logging in...");
-                    await contractInstance.methods.log_patient_login().send({ from: publicKey, gas: 100000 });
-                    sessionStorage.setItem("loggedInUser", publicKey);
-                    location.href = "./patient.html";
-                    return;
-                }
-
-                // Check if the user is a registered doctor
-                const doctor = await contractInstance.methods.get_doctor(publicKey).call();
-                if (doctor[0]) {
-                    console.log("Doctor detected. Logging in...");
-                    await contractInstance.methods.log_doctor_login().send({ from: publicKey, gas: 100000 });
-                    sessionStorage.setItem("loggedInUser", publicKey);
-                    location.href = "./doctor.html";
-                    return;
-                }
-
-                alert("Unrecognized user role. Please register first.");
-            } catch (error) {
-                console.error("Error during login:", error);
-                alert("Login failed. Please try again.");
-            }
+    try {
+        if (!web3) {
+            alert("Please install MetaMask to use this application.");
+            return;
         }
+
+        const accounts = await web3.eth.getAccounts();
+        const publicKey = accounts[0];
+        console.log("Logged-in account:", publicKey);
+
+        // Check if the user is a registered patient
+        const patient = await contractInstance.methods.get_patient(publicKey).call();
+        console.log("Patient data:", patient);
+
+        if (patient[0]) {
+            console.log("Patient detected. Logging in...");
+            await contractInstance.methods.log_patient_login().send({ from: publicKey, gas: 100000 });
+            sessionStorage.setItem("loggedInUser", publicKey);
+            location.href = "./patient.html";
+            return;
+        }
+
+        // Check if the user is a registered doctor
+        const doctor = await contractInstance.methods.get_doctor(publicKey).call();
+        console.log("Doctor data:", doctor);
+
+        if (doctor[0]) {
+            console.log("Doctor detected. Logging in...");
+            await contractInstance.methods.log_doctor_login().send({ from: publicKey, gas: 100000 });
+            sessionStorage.setItem("loggedInUser", publicKey);
+            location.href = "./doctor.html";
+            return;
+        }
+
+        // Check if the user is the admin
+        const isAdmin = await contractInstance.methods.checkAdmin(publicKey).call();
+        console.log("Admin check:", isAdmin);
+
+        if (isAdmin) {
+            console.log("Admin detected. Logging in...");
+            sessionStorage.setItem("loggedInUser", publicKey);
+            location.href = "./administrator.html";
+            return;
+        }
+
+        // If no role is identified
+        alert("Unrecognized user or your request may be pending.");
+    } catch (error) {
+        console.error("Error during login:", error);
+        alert("Login failed. Please try again.");
+    }
+}
+
     </script>
 </body>
 

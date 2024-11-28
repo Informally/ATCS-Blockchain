@@ -34,6 +34,18 @@ contract Agent {
 
     mapping(address => address[]) public pendingRequests;
 
+    address[] public pendingPatientApprovals;
+    address[] public pendingDoctorApprovals;
+    
+    mapping(address => bool) public isPendingPatientApproval;
+    mapping(address => bool) public isPendingDoctorApproval;
+
+    mapping(address => string) public pendingNames;
+    mapping(address => uint256) public pendingAges;
+
+    // Admin address
+    address public adminAddress;
+    
     event AgentAdded(address indexed agent, string name, uint256 age, uint256 designation);
     event AccessRequested(address indexed patient, address indexed doctor, uint256 timestamp);
     event AccessGranted(address indexed doctor, address indexed patient, uint256 timestamp);
@@ -45,56 +57,142 @@ contract Agent {
     event PatientLoggedOut(address indexed patient, string name, uint256 timestamp);
     event DoctorLoggedIn(address indexed doctor, string name, uint256 timestamp);
     event DoctorLoggedOut(address indexed doctor, string name, uint256 timestamp);
+    event RegistrationRequested(address indexed user, string name, uint256 designation, uint256 timestamp);
+    event RegistrationApproved(address indexed user, uint256 designation, uint256 timestamp);
+    event RegistrationRejected(address indexed user, uint256 designation, uint256 timestamp);
 
-    // Add a patient or doctor
-    function add_agent(
-        string memory _name,
-        uint256 _age,
-        uint256 _designation,
-        string memory _hash
-    ) public returns (string memory) {
-        address addr = msg.sender;
+    constructor() {
+        adminAddress = msg.sender; // Set the deployer's address as the admin
+    }
+
+    modifier onlyAdmin() {
+        require(msg.sender == adminAddress, "Caller is not an admin");
+        _;
+    }
+
+    // Add new admin function (only the current admin can add new admins)
+    function add_admin(address newAdmin) public onlyAdmin {
+        adminAddress = newAdmin; // Change the admin to the new address
+    }
+
+    // Check if the user is an admin
+    function checkAdmin(address user) public view returns (bool) {
+        return user == adminAddress;
+    }
+
+    // Modified add_agent_request to include name and age
+    function add_agent_request(string memory _name, uint256 _age, uint256 _designation) public {
+        require(bytes(_name).length > 0, "Name cannot be empty");
+        require(_age > 0, "Age must be greater than zero");
 
         if (_designation == 0) {
-            require(bytes(patientInfo[addr].name).length == 0, "Patient already registered");
-            Patient storage patient = patientInfo[addr];
-            patient.name = _name;
-            patient.age = _age;
-            patient.recordHash = _hash;
-            patientList.push(addr);
+            require(bytes(patientInfo[msg.sender].name).length == 0, "Patient already registered");
+            require(!isPendingPatientApproval[msg.sender], "Request already submitted");
+
+            pendingPatientApprovals.push(msg.sender);
+            isPendingPatientApproval[msg.sender] = true;
         } else if (_designation == 1) {
-            require(bytes(doctorInfo[addr].name).length == 0, "Doctor already registered");
-            Doctor storage doctor = doctorInfo[addr];
-            doctor.name = _name;
-            doctor.age = _age;
-            doctorList.push(addr);
+            require(bytes(doctorInfo[msg.sender].name).length == 0, "Doctor already registered");
+            require(!isPendingDoctorApproval[msg.sender], "Request already submitted");
+
+            pendingDoctorApprovals.push(msg.sender);
+            isPendingDoctorApproval[msg.sender] = true;
         } else {
             revert("Invalid designation");
         }
 
-        emit AgentAdded(addr, _name, _age, _designation);
-        return _name;
+        pendingNames[msg.sender] = _name;
+        pendingAges[msg.sender] = _age;
+
+        emit RegistrationRequested(msg.sender, _name, _designation, block.timestamp);
     }
 
-    function addRecordByDoctor(address patientAddr, string memory _diagnosis, string memory _ipfsHash) public {
-        require(bytes(doctorInfo[msg.sender].name).length > 0, "Caller is not a registered doctor");
-        require(bytes(patientInfo[patientAddr].name).length > 0, "Patient does not exist");
-        require(isAccessGranted(patientAddr, msg.sender), "Doctor does not have access to this patient");
+    // Approve registration function
+    function approve_registration(
+        address user,
+        string memory _name,
+        uint256 _age,
+        uint256 _designation
+    ) public onlyAdmin {
+        require(bytes(_name).length > 0, "Name cannot be empty");
+        require(_age > 0, "Age must be greater than zero");
 
-        Patient storage patient = patientInfo[patientAddr];
-        patient.records.push(
-            MedicalRecord({
-                diagnosis: _diagnosis,
-                ipfsHash: _ipfsHash,
-                timestamp: block.timestamp
-            })
-        );
+        if (_designation == 0) {
+            require(isPendingPatientApproval[user], "User not in pending approvals");
 
-        // Emit the event with the doctor's address as `addedBy`
-        emit MedicalRecordAdded(patientAddr, _diagnosis, _ipfsHash, msg.sender, block.timestamp);
+            Patient storage patient = patientInfo[user];
+            patient.name = _name;
+            patient.age = _age;
+
+            patientList.push(user);
+
+            isPendingPatientApproval[user] = false;
+            removePendingApproval(user, pendingPatientApprovals);
+        } else if (_designation == 1) {
+            require(isPendingDoctorApproval[user], "User not in pending approvals");
+
+            Doctor storage doctor = doctorInfo[user];
+            doctor.name = _name;
+            doctor.age = _age;
+
+            doctorList.push(user);
+
+            isPendingDoctorApproval[user] = false;
+            removePendingApproval(user, pendingDoctorApprovals);
+        } else {
+            revert("Invalid designation");
+        }
+
+        delete pendingNames[user];
+        delete pendingAges[user];
+
+        emit RegistrationApproved(user, _designation, block.timestamp);
     }
 
-    // Modify `editMedicalRecord` function
+
+    // Reject registration function
+    function reject_registration(address user, uint256 _designation) public onlyAdmin {
+        if (_designation == 0) {
+            require(isPendingPatientApproval[user], "User not in pending approvals");
+            isPendingPatientApproval[user] = false;
+            removePendingApproval(user, pendingPatientApprovals);
+        } else if (_designation == 1) {
+            require(isPendingDoctorApproval[user], "User not in pending approvals");
+            isPendingDoctorApproval[user] = false;
+            removePendingApproval(user, pendingDoctorApprovals);
+        } else {
+            revert("Invalid designation");
+        }
+
+        delete pendingNames[user];
+        delete pendingAges[user];
+
+        emit RegistrationRejected(user, _designation, block.timestamp);
+    }
+
+    // Helper function to remove from pending list
+    function removePendingApproval(address user, address[] storage list) private {
+        uint256 length = list.length;
+        for (uint256 i = 0; i < length; i++) {
+            if (list[i] == user) {
+                list[i] = list[length - 1];
+                list.pop();
+                break;
+            }
+        }
+    }
+
+    // Get pending patient registrations
+    function get_pending_patient_approvals() public view onlyAdmin returns (address[] memory) {
+        return pendingPatientApprovals;
+    }
+
+    // Get pending doctor registrations
+    function get_pending_doctor_approvals() public view onlyAdmin returns (address[] memory) {
+        return pendingDoctorApprovals;
+    }
+
+    // Modify editMedicalRecord function
     function editMedicalRecord(address patientAddr, uint256 index, string memory newDescription) public {
         require(bytes(doctorInfo[msg.sender].name).length > 0, "Caller is not a registered doctor");
         require(bytes(patientInfo[patientAddr].name).length > 0, "Patient does not exist");
@@ -119,11 +217,11 @@ contract Agent {
             })
         );
 
-        // Emit the event with the patient's address as `addedBy`
+        // Emit the event with the patient's address as addedBy
         emit MedicalRecordAdded(msg.sender, _diagnosis, _ipfsHash, msg.sender, block.timestamp);
     }
 
-    // Modify `editPatientRecord` function
+    // Modify editPatientRecord function
     function editPatientRecord(uint256 index, string memory newDescription) public {
         require(bytes(patientInfo[msg.sender].name).length > 0, "Caller is not a registered patient");
         require(index < patientInfo[msg.sender].records.length, "Invalid record index");

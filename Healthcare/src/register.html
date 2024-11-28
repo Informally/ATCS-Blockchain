@@ -131,8 +131,6 @@
     <script src="js/jquery.js"></script>
     <script src="js/bootstrap.min.js"></script>
     <script src="js/contractConfig.js"></script> <!-- Include contractConfig.js -->
-    <script src="js/app.js"></script>
-
     <script>
         let web3;
         let contractInstance;
@@ -156,69 +154,80 @@
 
         window.onload = initializeWeb3;
 
+        async function checkRegistrationStatus() {
+            try {
+                const accounts = await web3.eth.getAccounts();
+                const publicKey = accounts[0];
+
+                // Check if user is already registered
+                const patient = await contractInstance.methods.get_patient(publicKey).call();
+                const doctor = await contractInstance.methods.get_doctor(publicKey).call();
+                
+                if (patient[0] || doctor[0]) {
+                    alert("You are already registered. Please log in.");
+                    location.href = "./index.html";
+                    return false;
+                }
+
+                // Check if the user has a pending request
+                const isPatientPending = await contractInstance.methods.isPendingPatientApproval(publicKey).call();
+                const isDoctorPending = await contractInstance.methods.isPendingDoctorApproval(publicKey).call();
+
+                if (isPatientPending || isDoctorPending) {
+                    alert("Your registration request is already pending. Please wait for approval.");
+                    location.href = "./index.html";
+                    return false;
+                }
+
+                return true; // User can register
+            } catch (error) {
+                console.error("Error checking registration status:", error);
+                alert("Error checking registration status. Please try again.");
+                return false; // Prevent registration
+            }
+        }
+
         async function register() {
-    if (!web3 || !contractInstance) {
-        console.error("Web3 or contract instance not initialized");
-        return;
-    }
+            const canRegister = await checkRegistrationStatus();
+            if (!canRegister) return;
 
-    try {
-        const name = document.getElementById('name').value.trim();
-        const age = parseInt(document.getElementById('age').value);
-        const designation = document.getElementById('designation').value; // Keep as a string to handle "0" correctly
+            try {
+                const name = document.getElementById("name").value.trim();
+                const age = parseInt(document.getElementById("age").value);
+                const designation = document.getElementById("designation").value;
 
-        // Validation
-        if (!name || isNaN(age) || designation === "") {
-            alert("All fields are required.");
-            return;
+                // Validate inputs
+                if (!name || isNaN(age) || designation === "") {
+                    alert("All fields are required to be filled.");
+                    return;
+                }
+
+                // Validate age range
+                if (age < 10 || age > 99) {
+                    alert("Please input an age which makes sense. TQ");
+                    return;
+                }
+
+                // Validate doctor name
+                if (designation === "1" && !name.includes("(")) {
+                    alert("Doctor name must include department in brackets (e.g., Doc (ENT)).");
+                    return;
+                }
+
+                const accounts = await web3.eth.getAccounts();
+                const publicKey = accounts[0];
+
+                // Submit registration request to the contract
+                await contractInstance.methods.add_agent_request(name, age, parseInt(designation)).send({ from: publicKey });
+
+                alert("Registration request submitted successfully!");
+                location.href = "./index.html"; // Redirect to login page
+            } catch (error) {
+                console.error("Error submitting registration:", error);
+                alert("Registration failed. Please try again.");
+            }
         }
-
-        const accounts = await web3.eth.getAccounts();
-        const publicKey = accounts[0];
-
-        // Check if the user is already registered as a patient or doctor
-        const patientList = await contractInstance.methods.get_patient_list().call();
-        const doctorList = await contractInstance.methods.get_doctor_list().call();
-
-        if (patientList.includes(publicKey) || doctorList.includes(publicKey)) {
-            alert("You are already registered.");
-            return;
-        }
-
-        // Check for doctor name validation
-        if (parseInt(designation) === 1 && !/\(.+\)/.test(name)) {
-            alert("Please include your department in brackets in your name, e.g., User (ENT).");
-            return;
-        }
-
-        // Check if age is valid
-        if (age < 10 || age > 99) {
-            alert("Please enter a valid two-digit age.");
-            return;
-        }
-
-        console.log("Registering user with the following details:", { name, age, designation, publicKey });
-
-        // Add user to the contract
-        await contractInstance.methods
-            .add_agent(name, age, parseInt(designation), "")
-            .send({ from: publicKey, gas: 1000000 })
-            .on("receipt", (receipt) => {
-                console.log("Transaction receipt:", receipt);
-                alert("Registration successful! Redirecting to the login page...");
-                location.href = "./index.html"; // Redirect to index.html
-            })
-            .on("error", (error) => {
-                console.error("Transaction error:", error);
-                alert("An error occurred during registration. Please try again.");
-            });
-    } catch (error) {
-        console.error("Registration error:", error);
-        alert("Registration failed. Check the console for details.");
-    }
-}
-
-
     </script>
 </body>
+
 </html>

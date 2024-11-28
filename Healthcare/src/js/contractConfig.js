@@ -1,6 +1,11 @@
 // contractConfig.js
 const contractABI = [
 	{
+		"inputs": [],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
 		"anonymous": false,
 		"inputs": [
 			{
@@ -312,6 +317,87 @@ const contractABI = [
 		"type": "event"
 	},
 	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "designation",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "timestamp",
+				"type": "uint256"
+			}
+		],
+		"name": "RegistrationApproved",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "designation",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "timestamp",
+				"type": "uint256"
+			}
+		],
+		"name": "RegistrationRejected",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "name",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "designation",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "timestamp",
+				"type": "uint256"
+			}
+		],
+		"name": "RegistrationRequested",
+		"type": "event"
+	},
+	{
 		"inputs": [
 			{
 				"internalType": "address",
@@ -320,6 +406,61 @@ const contractABI = [
 			}
 		],
 		"name": "accept_access_request",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "accessRequests",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_diagnosis",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_ipfsHash",
+				"type": "string"
+			}
+		],
+		"name": "addRecordByPatient",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "newAdmin",
+				"type": "address"
+			}
+		],
+		"name": "add_admin",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -340,21 +481,51 @@ const contractABI = [
 				"internalType": "uint256",
 				"name": "_designation",
 				"type": "uint256"
+			}
+		],
+		"name": "add_agent_request",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "adminAddress",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
 			},
 			{
 				"internalType": "string",
-				"name": "_hash",
+				"name": "_name",
 				"type": "string"
-			}
-		],
-		"name": "add_agent",
-		"outputs": [
+			},
 			{
-				"internalType": "string",
-				"name": "",
-				"type": "string"
+				"internalType": "uint256",
+				"name": "_age",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_designation",
+				"type": "uint256"
 			}
 		],
+		"name": "approve_registration",
+		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
 	},
@@ -362,41 +533,38 @@ const contractABI = [
 		"inputs": [
 			{
 				"internalType": "address",
-				"name": "patientAddr",
+				"name": "user",
 				"type": "address"
-			},
-			{
-				"internalType": "string",
-				"name": "_diagnosis",
-				"type": "string"
-			},
-			{
-				"internalType": "string",
-				"name": "_ipfsHash",
-				"type": "string"
 			}
 		],
-		"name": "addRecordByDoctor",
-		"outputs": [],
-		"stateMutability": "nonpayable",
+		"name": "checkAdmin",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
 		"inputs": [
 			{
-				"internalType": "string",
-				"name": "_diagnosis",
-				"type": "string"
-			},
-			{
-				"internalType": "string",
-				"name": "_ipfsHash",
-				"type": "string"
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
 			}
 		],
-		"name": "addRecordByPatient",
-		"outputs": [],
-		"stateMutability": "nonpayable",
+		"name": "doctorList",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
@@ -441,122 +609,19 @@ const contractABI = [
 		"type": "function"
 	},
 	{
-		"inputs": [],
-		"name": "log_doctor_login",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "log_doctor_logout",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "log_patient_login",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "log_patient_logout",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
 		"inputs": [
 			{
 				"internalType": "address",
-				"name": "doctorAddr",
+				"name": "agentAddr",
 				"type": "address"
 			}
 		],
-		"name": "permit_access",
-		"outputs": [],
-		"stateMutability": "payable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "patientAddr",
-				"type": "address"
-			}
-		],
-		"name": "reject_access_request",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "patientAddr",
-				"type": "address"
-			},
-			{
-				"internalType": "address",
-				"name": "doctorAddr",
-				"type": "address"
-			}
-		],
-		"name": "remove_patient",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "doctorAddr",
-				"type": "address"
-			}
-		],
-		"name": "request_access",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "doctorAddr",
-				"type": "address"
-			}
-		],
-		"name": "revoke_access",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			},
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"name": "accessRequests",
+		"name": "getAgentName",
 		"outputs": [
 			{
-				"internalType": "bool",
+				"internalType": "string",
 				"name": "",
-				"type": "bool"
+				"type": "string"
 			}
 		],
 		"stateMutability": "view",
@@ -565,17 +630,27 @@ const contractABI = [
 	{
 		"inputs": [
 			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
+				"internalType": "address",
+				"name": "patientAddr",
+				"type": "address"
 			}
 		],
-		"name": "doctorList",
+		"name": "getMedicalRecords",
 		"outputs": [
 			{
-				"internalType": "address",
+				"internalType": "string[]",
 				"name": "",
-				"type": "address"
+				"type": "string[]"
+			},
+			{
+				"internalType": "string[]",
+				"name": "",
+				"type": "string[]"
+			},
+			{
+				"internalType": "uint256[]",
+				"name": "",
+				"type": "uint256[]"
 			}
 		],
 		"stateMutability": "view",
@@ -728,19 +803,26 @@ const contractABI = [
 		"type": "function"
 	},
 	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "agentAddr",
-				"type": "address"
-			}
-		],
-		"name": "getAgentName",
+		"inputs": [],
+		"name": "get_pending_doctor_approvals",
 		"outputs": [
 			{
-				"internalType": "string",
+				"internalType": "address[]",
 				"name": "",
-				"type": "string"
+				"type": "address[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "get_pending_patient_approvals",
+		"outputs": [
+			{
+				"internalType": "address[]",
+				"name": "",
+				"type": "address[]"
 			}
 		],
 		"stateMutability": "view",
@@ -750,26 +832,101 @@ const contractABI = [
 		"inputs": [
 			{
 				"internalType": "address",
-				"name": "patientAddr",
+				"name": "",
 				"type": "address"
 			}
 		],
-		"name": "getMedicalRecords",
+		"name": "isPendingDoctorApproval",
 		"outputs": [
 			{
-				"internalType": "string[]",
+				"internalType": "bool",
 				"name": "",
-				"type": "string[]"
-			},
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
 			{
-				"internalType": "string[]",
+				"internalType": "address",
 				"name": "",
-				"type": "string[]"
-			},
+				"type": "address"
+			}
+		],
+		"name": "isPendingPatientApproval",
+		"outputs": [
 			{
-				"internalType": "uint256[]",
+				"internalType": "bool",
 				"name": "",
-				"type": "uint256[]"
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "log_doctor_login",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "log_doctor_logout",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "log_patient_login",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "log_patient_logout",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "patientList",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "pendingAges",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
 			}
 		],
 		"stateMutability": "view",
@@ -783,7 +940,45 @@ const contractABI = [
 				"type": "uint256"
 			}
 		],
-		"name": "patientList",
+		"name": "pendingDoctorApprovals",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "pendingNames",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "pendingPatientApprovals",
 		"outputs": [
 			{
 				"internalType": "address",
@@ -822,6 +1017,50 @@ const contractABI = [
 		"inputs": [
 			{
 				"internalType": "address",
+				"name": "doctorAddr",
+				"type": "address"
+			}
+		],
+		"name": "permit_access",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "patientAddr",
+				"type": "address"
+			}
+		],
+		"name": "reject_access_request",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_designation",
+				"type": "uint256"
+			}
+		],
+		"name": "reject_registration",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
 				"name": "",
 				"type": "address"
 			},
@@ -841,10 +1080,54 @@ const contractABI = [
 		],
 		"stateMutability": "view",
 		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "patientAddr",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "doctorAddr",
+				"type": "address"
+			}
+		],
+		"name": "remove_patient",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "doctorAddr",
+				"type": "address"
+			}
+		],
+		"name": "request_access",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "doctorAddr",
+				"type": "address"
+			}
+		],
+		"name": "revoke_access",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
 	}
 ];
 
-const contractAddress = '0xC13112EBe833792F41Ff97e16EcB351CB468e90b'; // Your contract address
+const contractAddress = '0x2eB200e5c61fAfDa02B1ea3773De2C37D4A8dF5B'; // Your contract address
 
 // Make the variables globally accessible
 window.contractABI = contractABI;

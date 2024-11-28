@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Admin Dashboard</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+
+    <!-- Custom CSS -->
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+        }
+        .panel { background-color: #1c1c1c; border: 1px solid #333; border-radius: 8px; }
+        .panel-heading { background-color: #282828; border: none; color: #ffffff; text-align: center; font-size: 1.5rem; padding: 10px; border-top-left-radius: 8px; border-top-right-radius: 8px; }
+        .panel-body { padding: 20px; }
+        .table { color: #ffffff; }
+        .table th, .table td { border-top: none; }
+        .table-hover tbody tr:hover { background-color: #2a2a2a; color: #ffffff; }
+        .btn { margin-right: 5px; }
+        .approve { background-color: #28a745; color: #fff; }
+        .reject { background-color: #dc3545; color: #fff; }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-inverse navbar-static-top">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <a class="navbar-brand" href="#">Admin Dashboard</a>
+            </div>
+            <ul class="nav navbar-nav navbar-right">
+                <li><a id="logoutButton" href="#">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Pending Patient Registrations -->
+        <div class="panel">
+            <div class="panel-heading">Pending Patient Registrations</div>
+            <div class="panel-body">
+                <table class="table table-hover" id="patientRequestsTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Age</th>
+                            <th>Address</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Pending patient rows will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pending Doctor Registrations -->
+        <div class="panel">
+            <div class="panel-heading">Pending Doctor Registrations</div>
+            <div class="panel-body">
+                <table class="table table-hover" id="doctorRequestsTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Age</th>
+                            <th>Address</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Pending doctor rows will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <script src="js/jquery.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/contractConfig.js"></script>
+
+    <script>
+        let web3;
+        let contractInstance;
+
+        // Initialize Web3 and Contract
+        async function initializeWeb3() {
+            if (!window.ethereum) {
+                alert("Please install MetaMask to use this application.");
+                location.href = "./index.html";
+                return false;
+            }
+
+            try {
+                web3 = new Web3(window.ethereum);
+                await window.ethereum.request({ method: "eth_requestAccounts" });
+                contractInstance = new web3.eth.Contract(contractABI, contractAddress);
+                return true;
+            } catch (error) {
+                console.error("Error initializing Web3:", error);
+                alert("Failed to connect to MetaMask.");
+                return false;
+            }
+        }
+
+        // Load Pending Requests
+        async function loadPendingRequests() {
+            try {
+                const accounts = await web3.eth.getAccounts();
+                const adminAccount = accounts[0];
+
+                const pendingPatients = await contractInstance.methods.get_pending_patient_approvals().call({ from: adminAccount });
+                const pendingDoctors = await contractInstance.methods.get_pending_doctor_approvals().call({ from: adminAccount });
+
+                populateTable("patientRequestsTable", pendingPatients, 0); // Patients: Designation 0
+                populateTable("doctorRequestsTable", pendingDoctors, 1);   // Doctors: Designation 1
+            } catch (error) {
+                console.error("Error loading pending requests:", error);
+                alert("Failed to load pending requests.");
+            }
+        }
+
+        // Populate Table with Name, Age, Address
+        async function populateTable(tableId, addresses, designation) {
+            const tableBody = document.getElementById(tableId).querySelector("tbody");
+            tableBody.innerHTML = ""; // Clear existing rows
+
+            if (addresses.length === 0) {
+                const emptyRow = document.createElement("tr");
+                const emptyCell = document.createElement("td");
+                emptyCell.colSpan = 4;
+                emptyCell.innerText = "No pending requests.";
+                emptyRow.appendChild(emptyCell);
+                tableBody.appendChild(emptyRow);
+                return;
+            }
+
+            for (const address of addresses) {
+                const name = await contractInstance.methods.pendingNames(address).call();
+                const age = await contractInstance.methods.pendingAges(address).call();
+
+                const row = document.createElement("tr");
+
+                row.innerHTML = `
+                    <td>${name}</td>
+                    <td>${age}</td>
+                    <td>${address}</td>
+                    <td>
+                        <button class="btn approve" onclick="approveRegistration('${address}', ${designation})">Approve</button>
+                        <button class="btn reject" onclick="rejectRegistration('${address}', ${designation})">Reject</button>
+                    </td>
+                `;
+
+                tableBody.appendChild(row);
+            }
+        }
+
+        // Approve or Reject Registration
+        async function approveRegistration(address, designation) {
+            try {
+                // Get the current pending name and age from the contract
+                const pendingName = await contractInstance.methods.pendingNames(address).call();
+                const pendingAge = await contractInstance.methods.pendingAges(address).call();
+
+                // Prompt the admin to edit the name and age
+                const name = prompt("Approve Name:", pendingName);
+                const age = prompt("Approve Age:", pendingAge);
+
+                // Validate the inputs
+                if (!name || isNaN(age) || parseInt(age) <= 0) {
+                    alert("Invalid input. Name and age are required.");
+                    return;
+                }
+
+                // Retrieve accounts to specify the `from` address
+                const accounts = await web3.eth.getAccounts();
+                const adminAddress = accounts[0];
+
+                // Call the approve_registration function with the updated name and age
+                await contractInstance.methods
+                    .approve_registration(address, name, parseInt(age), designation)
+                    .send({ from: adminAddress });
+
+                alert("Registration approved successfully!");
+                location.reload(); // Refresh the page to reflect the updated data
+            } catch (error) {
+                console.error("Error approving registration:", error);
+                alert("Failed to approve registration. Please try again.");
+            }
+        }
+
+        async function rejectRegistration(address, designation) {
+            try {
+                const accounts = await web3.eth.getAccounts();
+                await contractInstance.methods.reject_registration(address, designation).send({ from: accounts[0] });
+                alert("Registration rejected!");
+                loadPendingRequests();
+            } catch (error) {
+                console.error("Error rejecting registration:", error);
+            }
+        }
+
+        // Initialize the Page
+        window.onload = async () => {
+            const web3Initialized = await initializeWeb3();
+            if (web3Initialized) await loadPendingRequests();
+        };
+    </script>
+</body>
+</html>
