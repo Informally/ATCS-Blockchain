@@ -86,24 +86,6 @@
     </nav>
 
     <div class="container">
-        <!-- Create/Edit Medical Records -->
-        <div class="panel">
-            <div class="panel-heading">Create Medical Record</div>
-            <div class="panel-body">
-                <form id="medicalRecordForm">
-                    <div class="form-group">
-                        <label for="diagnosis">Diagnosis:</label>
-                        <input type="text" class="form-control" id="diagnosis" placeholder="Enter diagnosis (e.g., Flu)">
-                    </div>
-                    <div class="form-group">
-                        <label for="description">Description:</label>
-                        <textarea class="form-control" id="description" rows="4" placeholder="Describe the condition"></textarea>
-                    </div>
-                    <button type="button" class="btn btn-primary" onclick="createMedicalRecord()">Save Record</button>
-                </form>
-            </div>
-        </div>
-
         <!-- View Existing Records -->
         <div class="panel">
             <div class="panel-heading">Existing Medical Records</div>
@@ -123,13 +105,14 @@
 
         <!-- Description and Edit Section -->
         <div class="panel description-panel" id="descriptionPanel" style="display: none;">
-            <div class="panel-heading" id="descriptionTitle">Edit Description</div>
+            <div class="panel-heading" id="descriptionTitle">View/Edit Description</div>
             <div class="panel-body">
                 <form>
                     <div class="form-group">
                         <textarea class="form-control" id="newDescription" rows="4" placeholder="Edit description"></textarea>
                     </div>
                     <button type="button" class="btn btn-primary" onclick="saveEditedDescription()">Save Changes</button>
+                    <button type="button" class="btn btn-danger" onclick="closeDescriptionPanel()">Close</button>
                 </form>
             </div>
         </div>
@@ -153,27 +136,6 @@
                 attachLogout(); // Attach logout functionality
             } catch (error) {
                 console.error("Error initializing medical records page:", error);
-            }
-        }
-
-        async function createMedicalRecord() {
-            const diagnosis = document.getElementById("diagnosis").value;
-            const description = document.getElementById("description").value;
-
-            if (!diagnosis || !description) {
-                alert("Please fill out all fields.");
-                return;
-            }
-
-            try {
-                const accounts = await web3.eth.getAccounts();
-                await contractInstance.methods.addRecordByPatient(diagnosis, description).send({ from: accounts[0] });
-                alert("Medical record created successfully!");
-                document.getElementById("medicalRecordForm").reset();
-                loadMedicalRecords();
-            } catch (error) {
-                console.error("Error saving record:", error);
-                alert("Failed to save record.");
             }
         }
 
@@ -204,7 +166,7 @@
                             <td>${record.diagnosis}</td>
                             <td>${new Date(record.timestamp).toLocaleString()}</td>
                             <td>
-                                <button class="btn btn-primary" onclick="viewDescription(${record.index}, '${encodeURIComponent(record.diagnosis)}', '${encodeURIComponent(record.description)}')">Edit</button>
+                                <button class="btn btn-primary" onclick="viewDescription(${record.index}, '${encodeURIComponent(record.diagnosis)}', '${encodeURIComponent(record.description)}')">View/Edit</button>
                             </td>
                         </tr>`;
                     tableBody.innerHTML += row;
@@ -216,7 +178,7 @@
 
         function viewDescription(index, diagnosis, description) {
             editingIndex = index;
-            document.getElementById("descriptionTitle").innerText = `Editing: ${decodeURIComponent(diagnosis)}`;
+            document.getElementById("descriptionTitle").innerText = `View/Edit: ${decodeURIComponent(diagnosis)}`;
             document.getElementById("newDescription").value = decodeURIComponent(description);
             document.getElementById("descriptionPanel").style.display = "block";
         }
@@ -238,6 +200,11 @@
             } catch (error) {
                 console.error("Error updating record:", error);
             }
+        }
+
+        function closeDescriptionPanel() {
+            editingIndex = -1;
+            document.getElementById("descriptionPanel").style.display = "none";
         }
 
         initializePage(); // Initialize the page on load

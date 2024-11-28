@@ -21,53 +21,42 @@
             color: #ffffff;
         }
 
-        .panel {
-            background-color: #1c1c1c;
-            border: 1px solid #333;
-            border-radius: 8px;
-        }
-
-        .panel-heading {
-            background-color: #282828;
-            border: none;
-            color: #ffffff;
-            text-align: center;
-            font-size: 1.5rem;
-            padding: 10px;
-            border-top-left-radius: 8px;
-            border-top-right-radius: 8px;
-        }
-
-        .panel-body {
-            padding: 20px;
+        .table-container {
+            margin-top: 20px;
+            overflow-x: auto;
         }
 
         .table {
+            background-color: #1c1c1c;
             color: #ffffff;
+            border: 1px solid #333;
+            width: 100%;
+            text-align: left;
         }
 
         .table th,
         .table td {
-            border-top: none;
+            padding: 12px;
+            border: 1px solid #333;
+        }
+
+        .table th {
+            background-color: #2c2c2c;
+            color: #2979ff;
         }
 
         .table-hover tbody tr:hover {
             background-color: #2a2a2a;
+        }
+
+        .panel-heading {
+            text-align: center;
+            font-size: 1.8rem;
+            background-color: #282828;
             color: #ffffff;
-        }
-
-        .btn-navigation {
-            margin: 10px;
-            background-color: #2979ff;
-            border: none;
-            color: white;
-            padding: 10px 30px;
-            border-radius: 4px;
-            text-decoration: none;
-        }
-
-        .btn-navigation:hover {
-            background-color: #1e60cc;
+            padding: 15px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
         }
     </style>
 </head>
@@ -89,23 +78,22 @@
 
     <!-- Page Content -->
     <div class="container">
-        <div class="panel">
-            <div class="panel-heading">Doctor Activity Logs</div>
-            <div class="panel-body">
-                <table class="table table-hover" id="logTable">
-                    <thead>
-                        <tr>
-                            <th>Log ID</th>
-                            <th>Event Type</th>
-                            <th>Description</th>
-                            <th>Timestamp</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Logs will be dynamically inserted here -->
-                    </tbody>
-                </table>
-            </div>
+        <h2 class="text-center">Doctor Activity Logs</h2>
+        <div class="table-container">
+            <table class="table table-hover" id="logTable">
+                <thead>
+                    <tr>
+                        <th>Log ID</th>
+                        <th>Event Type</th>
+                        <th>Description</th>
+                        <th>Timestamp</th>
+                        <th>Status/Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Logs will be dynamically inserted here -->
+                </tbody>
+            </table>
         </div>
     </div>
 
@@ -151,7 +139,8 @@
                     logs.push({
                         eventType: "Login",
                         description: "Doctor logged in.",
-                        timestamp: Number(log.returnValues.timestamp) * 1000,
+                        timestamp: Number(BigInt(log.returnValues.timestamp)), // Convert BigInt to Number
+                        action: "Logged In",
                     });
                 }
 
@@ -166,11 +155,12 @@
                     logs.push({
                         eventType: "Logout",
                         description: "Doctor logged out.",
-                        timestamp: Number(log.returnValues.timestamp) * 1000,
+                        timestamp: Number(BigInt(log.returnValues.timestamp)), // Convert BigInt to Number
+                        action: "Logged Out",
                     });
                 }
 
-                // Fetch Medical Record Added logs
+                // Fetch Medical Record Added logs (created by the doctor)
                 const addedLogs = await contractInstance.getPastEvents("MedicalRecordAdded", {
                     filter: { addedBy: publicKey },
                     fromBlock: 0,
@@ -181,12 +171,13 @@
                     const patientName = await getAgentName(log.returnValues.patient);
                     logs.push({
                         eventType: "Record Created",
-                        description: `Medical record created for ${patientName}.`,
-                        timestamp: Number(log.returnValues.timestamp) * 1000,
+                        description: `Medical record created for ${patientName} by doctor.`,
+                        timestamp: Number(BigInt(log.returnValues.timestamp)), // Convert BigInt to Number
+                        action: "Created",
                     });
                 }
 
-                // Fetch Medical Record Edited logs
+                // Fetch Medical Record Edited logs (edited by the doctor)
                 const editedLogs = await contractInstance.getPastEvents("MedicalRecordEdited", {
                     filter: { editedBy: publicKey },
                     fromBlock: 0,
@@ -197,24 +188,51 @@
                     const patientName = await getAgentName(log.returnValues.patient);
                     logs.push({
                         eventType: "Record Edited",
-                        description: `Medical record edited for ${patientName}.`,
-                        timestamp: Number(log.returnValues.timestamp) * 1000,
+                        description: `Medical record edited for ${patientName} by doctor.`,
+                        timestamp: Number(BigInt(log.returnValues.timestamp)), // Convert BigInt to Number
+                        action: "Edited",
                     });
                 }
 
-                // Fetch Access Requested logs
-                const requestedLogs = await contractInstance.getPastEvents("AccessRequested", {
+                // Fetch Patient Edited Medical Record logs
+                const patientEditedLogs = await contractInstance.getPastEvents("MedicalRecordEdited", {
+                    fromBlock: 0,
+                    toBlock: "latest",
+                });
+
+                for (const log of patientEditedLogs) {
+                    const { patient, editedBy, index, newDescription, timestamp } = log.returnValues;
+
+                    if (editedBy === patient) {
+                        const patientName = await getAgentName(patient);
+
+                        // Fetch the specific diagnosis for the record
+                        const medicalRecords = await contractInstance.methods.getMedicalRecords(patient).call();
+                        const diagnosisName = medicalRecords[0][index]; // Diagnosis array is the first return value
+
+                        logs.push({
+                            eventType: "Record Edited by Patient",
+                            description: `Medical record '${diagnosisName}' updated by ${patientName}.`,
+                            timestamp: Number(BigInt(timestamp)), // Convert BigInt to Number
+                            action: "Patient Edited",
+                        });
+                    }
+                }
+
+                // Fetch Access Request Received logs
+                const requestLogs = await contractInstance.getPastEvents("AccessRequested", {
                     filter: { doctor: publicKey },
                     fromBlock: 0,
                     toBlock: "latest",
                 });
 
-                for (const log of requestedLogs) {
+                for (const log of requestLogs) {
                     const patientName = await getAgentName(log.returnValues.patient);
                     logs.push({
-                        eventType: "Access Requested",
+                        eventType: "Access Request Received",
                         description: `Access request received from ${patientName}.`,
-                        timestamp: Number(log.returnValues.timestamp) * 1000,
+                        timestamp: Number(BigInt(log.returnValues.timestamp)), // Convert BigInt to Number
+                        action: "Request Received",
                     });
                 }
 
@@ -230,7 +248,8 @@
                     logs.push({
                         eventType: "Access Granted",
                         description: `Access granted to ${patientName}.`,
-                        timestamp: Number(log.returnValues.timestamp) * 1000,
+                        timestamp: Number(BigInt(log.returnValues.timestamp)), // Convert BigInt to Number
+                        action: "Granted",
                     });
                 }
 
@@ -245,8 +264,9 @@
                     const patientName = await getAgentName(log.returnValues.patient);
                     logs.push({
                         eventType: "Access Rejected",
-                        description: `Access rejected for ${patientName}.`,
-                        timestamp: Number(log.returnValues.timestamp) * 1000,
+                        description: `Access request rejected for ${patientName}.`,
+                        timestamp: Number(BigInt(log.returnValues.timestamp)), // Convert BigInt to Number
+                        action: "Rejected",
                     });
                 }
 
@@ -262,19 +282,20 @@
                 logs.reverse();
 
                 // Populate table
-                logs.forEach((log, index) => {
+                logs.forEach((log) => {
                     const row = logTable.insertRow();
                     row.innerHTML = `
                         <td>${log.logId}</td>
                         <td>${log.eventType}</td>
                         <td>${log.description}</td>
                         <td>${new Date(log.timestamp).toLocaleString()}</td>
+                        <td>${log.action}</td>
                     `;
                 });
 
                 if (logs.length === 0) {
                     const row = logTable.insertRow();
-                    row.innerHTML = `<td colspan="4" class="text-center">No logs available.</td>`;
+                    row.innerHTML = `<td colspan="5" class="text-center">No logs available.</td>`;
                 }
             } catch (error) {
                 console.error("Error loading logs:", error);
@@ -282,7 +303,6 @@
         }
 
         initializePage(); // Initialize the page on load
-
     </script>
 </body>
 

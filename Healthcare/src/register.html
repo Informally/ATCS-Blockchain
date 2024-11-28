@@ -163,9 +163,15 @@
     }
 
     try {
-        const name = document.getElementById('name').value;
+        const name = document.getElementById('name').value.trim();
         const age = parseInt(document.getElementById('age').value);
-        const designation = parseInt(document.getElementById('designation').value);
+        const designation = document.getElementById('designation').value; // Keep as a string to handle "0" correctly
+
+        // Validation
+        if (!name || isNaN(age) || designation === "") {
+            alert("All fields are required.");
+            return;
+        }
 
         const accounts = await web3.eth.getAccounts();
         const publicKey = accounts[0];
@@ -180,25 +186,39 @@
         }
 
         // Check for doctor name validation
-        if (designation === 1 && !/\(.+\)/.test(name)) {
-            alert("Please include your department in bracket in your name, e.g., User (ENT).");
+        if (parseInt(designation) === 1 && !/\(.+\)/.test(name)) {
+            alert("Please include your department in brackets in your name, e.g., User (ENT).");
             return;
         }
 
-        // Check if age is exactly two digits
+        // Check if age is valid
         if (age < 10 || age > 99) {
-            alert("Please enter a valid age.");
+            alert("Please enter a valid two-digit age.");
             return;
         }
 
-        await contractInstance.methods.add_agent(name, age, designation, "")
-            .send({ from: publicKey, gas: 1000000 });
+        console.log("Registering user with the following details:", { name, age, designation, publicKey });
 
-        alert("Registration successful!");
+        // Add user to the contract
+        await contractInstance.methods
+            .add_agent(name, age, parseInt(designation), "")
+            .send({ from: publicKey, gas: 1000000 })
+            .on("receipt", (receipt) => {
+                console.log("Transaction receipt:", receipt);
+                alert("Registration successful! Redirecting to the login page...");
+                location.href = "./index.html"; // Redirect to index.html
+            })
+            .on("error", (error) => {
+                console.error("Transaction error:", error);
+                alert("An error occurred during registration. Please try again.");
+            });
     } catch (error) {
         console.error("Registration error:", error);
+        alert("Registration failed. Check the console for details.");
     }
 }
+
+
     </script>
 </body>
 </html>
