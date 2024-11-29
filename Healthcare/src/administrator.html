@@ -161,9 +161,9 @@
     <script src="js/contractConfig.js"></script>
 
     <script>
-       let web3;
+        let web3;
         let contractInstance;
-
+    
         // Initialize Web3 and Contract
         async function initializeWeb3() {
             if (!window.ethereum) {
@@ -171,7 +171,7 @@
                 location.href = "./index.html";
                 return false;
             }
-
+    
             try {
                 web3 = new Web3(window.ethereum);
                 await window.ethereum.request({ method: "eth_requestAccounts" });
@@ -183,19 +183,34 @@
                 return false;
             }
         }
-
+    
+        // Check for valid session
+        function validateSession() {
+            const sessionToken = localStorage.getItem("sessionToken");
+            const loggedInAddress = localStorage.getItem("loggedInAddress");
+            const userRole = localStorage.getItem("userRole");
+    
+            if (!sessionToken || !loggedInAddress || userRole !== "admin") {
+                alert("Access denied: You must log in through the login page.");
+                location.href = "./index.html";
+                return false;
+            }
+    
+            return true;
+        }
+    
         // Admin Authentication
         async function authenticateAdmin() {
             try {
                 const accounts = await web3.eth.getAccounts();
                 const adminAccount = accounts[0];
-
+    
                 // Check if admin session is active
                 const isAuthenticated = localStorage.getItem("isAdminAuthenticated");
                 if (isAuthenticated === "true") {
                     return true; // Skip re-authentication
                 }
-
+    
                 // Verify if the user is an admin
                 const isAdmin = await contractInstance.methods.checkAdmin(adminAccount).call();
                 if (!isAdmin) {
@@ -203,115 +218,22 @@
                     location.href = "./index.html";
                     return false;
                 }
-
+    
                 // Authenticate admin with gas fee
                 const authenticationFee = await contractInstance.methods.authenticationFee().call();
                 await contractInstance.methods.log_admin_authentication().send({
                     from: adminAccount,
                     value: authenticationFee,
                 });
-
+    
                 localStorage.setItem("isAdminAuthenticated", "true"); // Mark session as authenticated
+                localStorage.setItem("loggedInAddress", adminAccount);
                 return true;
             } catch (error) {
                 console.error("Error during admin authentication:", error);
                 alert("Failed to authenticate admin. Redirecting...");
                 location.href = "./index.html";
                 return false;
-            }
-        }
-
-        // Role Validation: Ensure only Admin can access this page
-        async function validateAdmin() {
-            try {
-                const accounts = await web3.eth.getAccounts();
-                const userAddress = accounts[0];
-
-                const isAdmin = await contractInstance.methods.checkAdmin(userAddress).call();
-
-                if (!isAdmin) {
-                    alert("Access denied: Unauthorized user.");
-                    location.href = "./index.html"; // Redirect to login page
-                }
-            } catch (error) {
-                console.error("Error validating admin role:", error);
-                alert("Failed to validate role. Redirecting...");
-                location.href = "./index.html";
-            }
-        }
-
-        // Reset User Password
-        async function resetUserPassword() {
-            const userAddress = prompt("Enter the user's address:");
-            const newPassword = prompt("Enter the new password:");
-
-            try {
-                const accounts = await web3.eth.getAccounts();
-                await contractInstance.methods.adminResetPassword(userAddress, newPassword).send({ from: accounts[0] });
-                alert("Password reset successfully.");
-            } catch (error) {
-                console.error("Error resetting password:", error);
-                alert("Failed to reset password.");
-            }
-        }
-
-        // Load Pending Requests
-        async function loadRequestsAndLists() {
-            try {
-                const accounts = await web3.eth.getAccounts();
-                const adminAccount = accounts[0];
-
-                // Fetch all pending patient and doctor approvals
-                const pendingPatients = await contractInstance.methods.get_pending_patient_approvals().call({ from: adminAccount });
-                const pendingDoctors = await contractInstance.methods.get_pending_doctor_approvals().call({ from: adminAccount });
-
-                populateTable("patientRequestsTable", pendingPatients, 0); // Patients: Designation 0
-                populateTable("doctorRequestsTable", pendingDoctors, 1);   // Doctors: Designation 1
-            } catch (error) {
-                console.error("Error loading requests and lists:", error);
-                alert("Failed to load requests and lists.");
-            }
-        }
-
-        // Populate Table with Pending Requests
-        async function populateTable(tableId, addresses, designation) {
-            const tableBody = document.getElementById(tableId).querySelector("tbody");
-            tableBody.innerHTML = "";
-
-            if (addresses.length === 0) {
-                const emptyRow = document.createElement("tr");
-                const emptyCell = document.createElement("td");
-                emptyCell.colSpan = 5;
-                emptyCell.innerText = "No entries found.";
-                emptyRow.appendChild(emptyCell);
-                tableBody.appendChild(emptyRow);
-                return;
-            }
-
-            for (const address of addresses) {
-                let name, age;
-                try {
-                    name = await contractInstance.methods.pendingNames(address).call();
-                    age = await contractInstance.methods.pendingAges(address).call();
-                } catch (error) {
-                    console.error("Error fetching data for address:", error);
-                    continue;
-                }
-
-                const role = designation === 0 ? "Patient" : "Doctor";
-
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td>${name}</td>
-                    <td>${age}</td>
-                    <td>${role}</td>
-                    <td>${address}</td>
-                    <td>
-                        <button class="btn approve" onclick="approveRegistration('${address}', ${designation})">Approve</button>
-                        <button class="btn reject" onclick="rejectRegistration('${address}', ${designation})">Reject</button>
-                    </td>
-                `;
-                tableBody.appendChild(row);
             }
         }
 
@@ -358,38 +280,116 @@
                 console.error("Error rejecting registration:", error);
             }
         }
-
+    
+        // Reset User Password
+        async function resetUserPassword() {
+            const userAddress = prompt("Enter the user's address:");
+            const newPassword = prompt("Enter the new password:");
+    
+            if (!userAddress || !newPassword) {
+                alert("Both user address and new password are required.");
+                return;
+            }
+    
+            try {
+                const accounts = await web3.eth.getAccounts();
+                await contractInstance.methods.adminResetPassword(userAddress, newPassword).send({ from: accounts[0] });
+                alert("Password reset successfully.");
+            } catch (error) {
+                console.error("Error resetting password:", error);
+                alert("Failed to reset password.");
+            }
+        }
+    
+        // Load Pending Requests
+        async function loadRequestsAndLists() {
+            try {
+                const accounts = await web3.eth.getAccounts();
+                const adminAccount = accounts[0];
+    
+                const pendingPatients = await contractInstance.methods.get_pending_patient_approvals().call({ from: adminAccount });
+                const pendingDoctors = await contractInstance.methods.get_pending_doctor_approvals().call({ from: adminAccount });
+    
+                populateTable("patientRequestsTable", pendingPatients, 0); // Patients: Designation 0
+                populateTable("doctorRequestsTable", pendingDoctors, 1);   // Doctors: Designation 1
+            } catch (error) {
+                console.error("Error loading requests and lists:", error);
+                alert("Failed to load requests and lists.");
+            }
+        }
+    
+        // Populate Table with Pending Requests
+        async function populateTable(tableId, addresses, designation) {
+            const tableBody = document.getElementById(tableId).querySelector("tbody");
+            tableBody.innerHTML = "";
+    
+            if (addresses.length === 0) {
+                const emptyRow = document.createElement("tr");
+                const emptyCell = document.createElement("td");
+                emptyCell.colSpan = 5;
+                emptyCell.innerText = "No entries found.";
+                emptyRow.appendChild(emptyCell);
+                tableBody.appendChild(emptyRow);
+                return;
+            }
+    
+            for (const address of addresses) {
+                let name, age;
+                try {
+                    name = await contractInstance.methods.pendingNames(address).call();
+                    age = await contractInstance.methods.pendingAges(address).call();
+                } catch (error) {
+                    console.error("Error fetching data for address:", error);
+                    continue;
+                }
+    
+                const role = designation === 0 ? "Patient" : "Doctor";
+    
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${name}</td>
+                    <td>${age}</td>
+                    <td>${role}</td>
+                    <td>${address}</td>
+                    <td>
+                        <button class="btn approve" onclick="approveRegistration('${address}', ${designation})">Approve</button>
+                        <button class="btn reject" onclick="rejectRegistration('${address}', ${designation})">Reject</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            }
+        }
+    
         // Admin Logout
         async function adminLogout() {
             try {
                 const accounts = await web3.eth.getAccounts();
                 const adminAccount = accounts[0];
-
+    
                 const logoutFee = await contractInstance.methods.logoutFee().call();
                 await contractInstance.methods.log_admin_logout().send({
                     from: adminAccount,
                     value: logoutFee,
                 });
-
+    
                 alert("Logged out successfully!");
-                localStorage.removeItem("isAdminAuthenticated"); // Clear session
+                localStorage.clear(); // Clear session
                 location.href = "./index.html";
             } catch (error) {
                 console.error("Error during admin logout:", error);
                 alert("Failed to log out.");
             }
         }
-
+    
         // Initialize the Page
         window.onload = async () => {
             const web3Initialized = await initializeWeb3();
-            if (web3Initialized) {
-                await authenticateAdmin(); // Authenticate admin if not authenticated
-                // await validateAdmin(); // Ensure user is an admin
+            if (web3Initialized && validateSession()) {
+                await authenticateAdmin(); // Authenticate admin
                 await loadRequestsAndLists(); // Load pending requests
             }
         };
     </script>
-
+    
 </body>
 </html>

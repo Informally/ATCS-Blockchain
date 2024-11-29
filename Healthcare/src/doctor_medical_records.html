@@ -175,18 +175,26 @@
         let currentPatient = null;
 
         async function initializePage() {
-            try {
-                await validateLogin(); // Ensure the user is logged in
-                await validateRole("doctor"); // Ensure the user is a doctor
-                await initializeWeb3(); // Initialize Web3 and contract
-                loadConnectedPatients(); // Load all connected patients
-                attachLogout(); // Attach logout functionality
-            } catch (error) {
-                console.error("Error initializing the page:", error);
-                alert("An error occurred. Please log in again.");
-                location.href = "index.html";
-            }
+        try {
+            console.log("Validating session...");
+            await validateLogin(); // Ensure the user is logged in
+
+            console.log("Validating role as doctor...");
+            await validateRole("doctor"); // Ensure the user has the doctor role
+
+            console.log("Initializing Web3...");
+            await initializeWeb3(); // Initialize Web3
+
+            console.log("Loading doctor logs...");
+            loadConnectedPatients(); // Load logs
+
+            attachLogout(); // Attach logout functionality
+        } catch (error) {
+            console.error("Error initializing doctor logs page:", error.message);
+            alert("Unauthorized access. Redirecting to login page...");
+            location.href = "./index.html";
         }
+    }
 
         async function loadConnectedPatients() {
             const accounts = await web3.eth.getAccounts();

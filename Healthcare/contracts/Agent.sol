@@ -52,6 +52,10 @@ contract Agent {
     uint256 public authenticationFee = 0.01 ether;
     uint256 public logoutFee = 0.005 ether;
 
+    // Username and password storage
+    mapping(address => string) private usernames; // Maps user addresses to usernames
+    mapping(address => bytes32) private hashedPasswords; // Stores hashed passwords
+
     event AgentAdded(address indexed agent, string name, uint256 age, uint256 designation);
     event AccessRequested(address indexed patient, address indexed doctor, uint256 timestamp);
     event AccessGranted(address indexed doctor, address indexed patient, uint256 timestamp);
@@ -68,6 +72,10 @@ contract Agent {
     event RegistrationRejected(address indexed user, uint256 designation, uint256 timestamp);
     event AdminAuthenticated(address indexed admin, uint256 timestamp, uint256 feePaid);
     event AdminLoggedOut(address indexed admin, uint256 timestamp, uint256 feePaid);
+    event UserRegistered(address indexed user, string username);
+    event UserAuthenticated(address indexed user);
+    event UserLoggedOut(address indexed user, uint256 timestamp);
+    event PasswordUpdated(address indexed user);
 
     constructor() {
         adminAddress = msg.sender; // Set the deployer's address as the admin
@@ -86,6 +94,66 @@ contract Agent {
     function setLogoutFee(uint256 fee) public onlyAdmin {
         logoutFee = fee;
     }
+
+    mapping(string => bool) private isUsernameTaken;
+
+    function registerUser(string memory username, string memory password) public {
+        require(bytes(username).length > 0, "Username cannot be empty");
+        require(bytes(password).length > 0, "Password cannot be empty");
+        require(bytes(usernames[msg.sender]).length == 0, "User already registered");
+        require(!isUsernameTaken[username], "Username already taken");
+
+        usernames[msg.sender] = username;
+        hashedPasswords[msg.sender] = keccak256(abi.encodePacked(password));
+        isUsernameTaken[username] = true;
+
+        emit UserRegistered(msg.sender, username);
+    }
+
+    function authenticate(string memory username, string memory password) public view returns (bool) {
+        require(keccak256(abi.encodePacked(usernames[msg.sender])) == keccak256(abi.encodePacked(username)), "Invalid username");
+        require(hashedPasswords[msg.sender] == keccak256(abi.encodePacked(password)), "Invalid password");
+        return true;
+    }
+
+    
+    // Admin authentication with username and password
+    function authenticateAdmin(string memory username, string memory password) public payable {
+        require(msg.sender == adminAddress, "Caller is not the admin");
+        require(keccak256(abi.encodePacked(usernames[msg.sender])) == keccak256(abi.encodePacked(username)), "Invalid admin username");
+        require(hashedPasswords[msg.sender] == keccak256(abi.encodePacked(password)), "Invalid admin password");
+
+        require(msg.value == authenticationFee, "Incorrect fee sent for authentication");
+
+        emit AdminAuthenticated(msg.sender, block.timestamp, msg.value);
+    }
+
+    // Update Password
+    function updatePassword(string memory oldPassword, string memory newPassword) public {
+        require(hashedPasswords[msg.sender] == keccak256(abi.encodePacked(oldPassword)), "Incorrect old password");
+        require(bytes(newPassword).length > 0, "New password cannot be empty");
+
+        hashedPasswords[msg.sender] = keccak256(abi.encodePacked(newPassword));
+        emit PasswordUpdated(msg.sender);
+    }
+
+    // Admin-Specific Reset
+    function adminResetPassword(address user, string memory newPassword) public onlyAdmin {
+        require(bytes(newPassword).length > 0, "New password cannot be empty");
+
+        hashedPasswords[user] = keccak256(abi.encodePacked(newPassword));
+        emit PasswordUpdated(user);
+    }
+
+    function logoutUser() public {
+        require(bytes(usernames[msg.sender]).length > 0, "User not registered");
+        emit UserLoggedOut(msg.sender, block.timestamp);
+    }
+
+    function isUserRegistered(address user) public view returns (bool) {
+        return bytes(usernames[user]).length > 0;
+    }
+
 
     // Admin authentication with fee
     function log_admin_authentication() public payable {
@@ -281,6 +349,10 @@ contract Agent {
     // Get pending patient registrations
     function get_pending_patient_approvals() public view onlyAdmin returns (address[] memory) {
         return pendingPatientApprovals;
+    }
+
+    function getHashedPassword(address user) public view returns (bytes32) {
+    return hashedPasswords[user];
     }
 
     // Get pending doctor registrations

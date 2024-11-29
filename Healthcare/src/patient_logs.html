@@ -93,15 +93,27 @@
     <script>
         async function initializePage() {
             try {
+                console.log("Validating session...");
                 await validateLogin(); // Ensure the user is logged in
-                await validateRole("patient"); // Ensure the user is a patient
+
+                console.log("Initializing MetaMask and smart contract...");
                 await initializeWeb3(); // Initialize Web3
-                await loadPatientLogs(); // Load logs
+
+                console.log("Validating role as patient...");
+                await validateRole("patient"); // Ensure the user has the "patient" role
+
+                console.log("Loading medical records...");
+                await loadPatientLogs(); // Load Logs
+
+                console.log("Attaching logout functionality...");
                 attachLogout(); // Attach logout functionality
             } catch (error) {
-                console.error("Error initializing logs page:", error);
+                console.error("Error initializing medical records page:", error.message);
+                alert("Unauthorized access or initialization failure. Redirecting to login page...");
+                location.href = "./index.html";
             }
         }
+
 
         async function loadPatientLogs() {
     try {

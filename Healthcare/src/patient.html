@@ -186,23 +186,31 @@
     <script src="js/utils.js"></script> <!-- Include utils.js -->
 
     <script>
-        document.addEventListener("DOMContentLoaded", async () => {
-            try {
-                const web3Initialized = await initializeWeb3();
-                if (!web3Initialized) throw new Error("Web3 not initialized.");
+        async function initializePage() {
+        try {
+            console.log("Validating session...");
+            await validateLogin(); // Ensure session exists before initializing Web3
 
-                await initializePage("patient"); // Validate patient role and initialize
+            console.log("Initializing MetaMask and smart contract...");
+            await initializeWeb3(); // Only initialize Web3 if session is valid
+            
+            console.log("Validating role as patient...");
+            await validateRole("patient"); // Ensure the user has the "patient" role
 
-                attachLogout(); // Attach logout functionality
-                await loadPatientDetails(); // Load patient details
-                await loadDoctorList(); // Load list of doctors
-                await loadAccessList(); // Load current access list
-            } catch (error) {
-                console.error("Error initializing patient page:", error);
-                alert("You must log in first!");
-                location.href = "./index.html";
-            }
-        });
+            // Optionally, log the patient login if you want a gas payment here
+            await logPatientLogin();
+
+            console.log("Loading patient dashboard...");
+            attachLogout(); // Attach logout functionality
+            await loadPatientDetails(); // Load patient details
+            await loadDoctorList(); // Load list of doctors
+            await loadAccessList(); // Load current access list
+        } catch (error) {
+            console.error("Error initializing patient page:", error.message);
+            alert("Unauthorized access or initialization failure. Redirecting to login page...");
+            location.href = "./index.html";
+        }
+    }
 
         async function loadPatientDetails() {
             const accounts = await web3.eth.getAccounts();
@@ -213,6 +221,22 @@
                 document.getElementById("age").textContent = patientData[1];
             } catch (error) {
                 console.error("Error loading patient details:", error);
+            }
+        }
+
+        // Log the patient's login (requires gas payment)
+        async function logPatientLogin() {
+            try {
+                const accounts = await web3.eth.getAccounts();
+                const patientAddress = accounts[0]; // Correct variable name for patient address
+
+                // Call the `log_patient_login` method to log the login
+                await contractInstance.methods.log_patient_login().send({ from: patientAddress });
+                console.log("Patient login logged successfully.");
+            } catch (error) {
+                console.error("Error logging patient login:", error);
+                alert("Failed to log patient login. Please try again.");
+                throw error; // Prevent further access if logging fails
             }
         }
 
@@ -304,6 +328,8 @@
             }
         }
 
+        // Call `initializePage` directly on script execution (page load)
+        initializePage();
     </script>
 </body>
 

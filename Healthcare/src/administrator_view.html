@@ -161,7 +161,7 @@
     <script>
         let web3;
         let contractInstance;
-
+    
         // Initialize Web3 and Contract
         async function initializeWeb3() {
             if (!window.ethereum) {
@@ -169,7 +169,7 @@
                 location.href = "./index.html";
                 return false;
             }
-
+    
             try {
                 web3 = new Web3(window.ethereum);
                 await window.ethereum.request({ method: "eth_requestAccounts" });
@@ -181,15 +181,30 @@
                 return false;
             }
         }
-
+    
+        // Validate Session
+        function validateSession() {
+            const sessionToken = localStorage.getItem("sessionToken");
+            const loggedInAddress = localStorage.getItem("loggedInAddress");
+            const userRole = localStorage.getItem("userRole");
+    
+            if (!sessionToken || !loggedInAddress || userRole !== "admin") {
+                alert("Access denied: You must log in with a valid admin account.");
+                location.href = "./index.html";
+                return false;
+            }
+    
+            return true;
+        }
+    
         // Role Validation
         async function validateAdmin() {
             try {
                 const accounts = await web3.eth.getAccounts();
                 const userAddress = accounts[0];
-
+    
                 const isAdmin = await contractInstance.methods.checkAdmin(userAddress).call();
-
+    
                 if (!isAdmin) {
                     alert("Access denied: Unauthorized user.");
                     location.href = "./index.html"; // Redirect to login page
@@ -200,39 +215,38 @@
                 location.href = "./index.html";
             }
         }
-
+    
         // Admin Logout
         async function adminLogout() {
             try {
                 const accounts = await web3.eth.getAccounts();
                 const adminAccount = accounts[0];
-
+    
                 const logoutFee = await contractInstance.methods.logoutFee().call();
                 await contractInstance.methods.log_admin_logout().send({
                     from: adminAccount,
                     value: logoutFee,
                 });
-
+    
                 alert("Logged out successfully!");
-                localStorage.removeItem("isAdminAuthenticated"); // Clear session
-                isAdminAuthenticated = false;
+                localStorage.clear(); // Clear session
                 location.href = "./index.html";
             } catch (error) {
                 console.error("Error during admin logout:", error);
                 alert("Failed to log out.");
             }
         }
-
+    
         // Load Registered Users
         async function loadRegisteredUsers() {
             try {
                 const accounts = await web3.eth.getAccounts();
                 const adminAccount = accounts[0];
-
+    
                 // Fetch registered patients and doctors
                 const registeredPatients = await contractInstance.methods.get_patient_list().call({ from: adminAccount });
                 const registeredDoctors = await contractInstance.methods.get_doctor_list().call({ from: adminAccount });
-
+    
                 populateRegisteredTable("registeredPatientsTable", registeredPatients, "patient");
                 populateRegisteredTable("registeredDoctorsTable", registeredDoctors, "doctor");
             } catch (error) {
@@ -240,18 +254,18 @@
                 alert("Failed to load registered users.");
             }
         }
-
+    
         // Populate Registered Table
         async function populateRegisteredTable(tableId, addresses, userType) {
             const tableBody = document.getElementById(tableId).querySelector("tbody");
             tableBody.innerHTML = "";
-
+    
             if (addresses.length === 0) {
                 const emptyRow = `<tr><td colspan="4">No entries found.</td></tr>`;
                 tableBody.innerHTML = emptyRow;
                 return;
             }
-
+    
             addresses.forEach(async (address, index) => {
                 try {
                     let userDetails;
@@ -260,7 +274,7 @@
                     } else if (userType === "doctor") {
                         userDetails = await contractInstance.methods.get_doctor(address).call();
                     }
-
+    
                     const row = `<tr>
                         <td>${index + 1}</td>
                         <td>${userDetails[0]}</td>
@@ -273,16 +287,17 @@
                 }
             });
         }
-
+    
         // Initialize the Page
         window.onload = async () => {
             const web3Initialized = await initializeWeb3();
-            if (web3Initialized) {
+            if (web3Initialized && validateSession()) {
                 await validateAdmin(); // Ensure user is an admin
                 await loadRegisteredUsers();
             }
         };
     </script>
+    
 </body>
 
 </html>

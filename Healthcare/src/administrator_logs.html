@@ -131,14 +131,15 @@
     <script>
         let web3;
         let contractInstance;
-
+    
+        // Initialize Web3 and Contract
         async function initializeWeb3() {
             if (!window.ethereum) {
                 alert("Please install MetaMask to use this application.");
                 location.href = "./index.html";
                 return false;
             }
-
+    
             try {
                 web3 = new Web3(window.ethereum);
                 await window.ethereum.request({ method: "eth_requestAccounts" });
@@ -150,86 +151,102 @@
                 return false;
             }
         }
-
+    
+        // Validate Session
+        function validateSession() {
+            const sessionToken = localStorage.getItem("sessionToken");
+            const loggedInAddress = localStorage.getItem("loggedInAddress");
+            const userRole = localStorage.getItem("userRole");
+    
+            if (!sessionToken || !loggedInAddress || userRole !== "admin") {
+                alert("Access denied: You must log in through the login page.");
+                location.href = "./index.html";
+                return false;
+            }
+    
+            return true;
+        }
+    
+        // Load Admin Logs
         async function loadAdminLogs() {
             try {
                 const accounts = await web3.eth.getAccounts();
                 const adminAddress = accounts[0];
                 const logTable = document.getElementById("logTable").getElementsByTagName("tbody")[0];
                 logTable.innerHTML = ""; // Clear existing logs
-
+    
                 const logs = [];
-
+    
                 // Fetch Admin Login logs
                 const loginLogs = await contractInstance.getPastEvents("AdminAuthenticated", {
                     filter: { admin: adminAddress },
                     fromBlock: 0,
                     toBlock: "latest",
                 });
-
+    
                 for (const log of loginLogs) {
-                    const timestamp = BigInt(log.returnValues.timestamp); // Handle as BigInt
+                    const timestamp = BigInt(log.returnValues.timestamp);
                     logs.push({
                         eventType: "Login",
                         description: "Admin authenticated successfully.",
-                        timestamp: Number(timestamp) * 1000, // Convert to milliseconds
+                        timestamp: Number(timestamp) * 1000,
                         action: "Authenticated",
                     });
                 }
-
+    
                 // Fetch Admin Logout logs
                 const logoutLogs = await contractInstance.getPastEvents("AdminLoggedOut", {
                     filter: { admin: adminAddress },
                     fromBlock: 0,
                     toBlock: "latest",
                 });
-
+    
                 for (const log of logoutLogs) {
-                    const timestamp = BigInt(log.returnValues.timestamp); // Handle as BigInt
+                    const timestamp = BigInt(log.returnValues.timestamp);
                     logs.push({
                         eventType: "Logout",
                         description: "Admin logged out successfully.",
-                        timestamp: Number(timestamp) * 1000, // Convert to milliseconds
+                        timestamp: Number(timestamp) * 1000,
                         action: "Logged Out",
                     });
                 }
-
+    
                 // Fetch Admin Approve/Reject Logs
                 const registrationLogs = await contractInstance.getPastEvents("RegistrationApproved", {
                     filter: { admin: adminAddress },
                     fromBlock: 0,
                     toBlock: "latest",
                 });
-
+    
                 for (const log of registrationLogs) {
                     const { user, designation, timestamp } = log.returnValues;
                     logs.push({
                         eventType: "Approval",
                         description: `Admin approved registration for ${designation === "0" ? "Patient" : "Doctor"} with address ${user}.`,
-                        timestamp: Number(BigInt(timestamp)) * 1000, // Convert to milliseconds
+                        timestamp: Number(BigInt(timestamp)) * 1000,
                         action: "Approved",
                     });
                 }
-
+    
                 const rejectedLogs = await contractInstance.getPastEvents("RegistrationRejected", {
                     filter: { admin: adminAddress },
                     fromBlock: 0,
                     toBlock: "latest",
                 });
-
+    
                 for (const log of rejectedLogs) {
                     const { user, designation, timestamp } = log.returnValues;
                     logs.push({
                         eventType: "Rejection",
                         description: `Admin rejected registration for ${designation === "0" ? "Patient" : "Doctor"} with address ${user}.`,
-                        timestamp: Number(BigInt(timestamp)) * 1000, // Convert to milliseconds
+                        timestamp: Number(BigInt(timestamp)) * 1000,
                         action: "Rejected",
                     });
                 }
-
+    
                 // Sort logs by timestamp (descending)
                 logs.sort((a, b) => b.timestamp - a.timestamp);
-
+    
                 // Reverse Log ID while maintaining descending timestamp order
                 logs.forEach((log, index) => {
                     const row = logTable.insertRow();
@@ -241,8 +258,7 @@
                         <td>${log.action}</td>
                     `;
                 });
-
-
+    
                 if (logs.length === 0) {
                     const row = logTable.insertRow();
                     row.innerHTML = `<td colspan="5" class="text-center">No logs available.</td>`;
@@ -252,49 +268,33 @@
                 alert("Failed to load admin logs. Please try again later.");
             }
         }
-
-        async function validateAdminLogin() {
-            try {
-                const accounts = await web3.eth.getAccounts();
-                const isAdmin = await contractInstance.methods.checkAdmin(accounts[0]).call();
-                if (!isAdmin) {
-                    throw new Error("Not an admin.");
-                }
-            } catch (error) {
-                console.error("Error validating admin login:", error);
-                alert("You are not authorized to view this page.");
-                location.href = "./index.html";
-            }
-        }
-
+    
         // Admin Logout
         async function adminLogout() {
             try {
                 const accounts = await web3.eth.getAccounts();
                 const adminAccount = accounts[0];
-
+    
                 const logoutFee = await contractInstance.methods.logoutFee().call();
                 await contractInstance.methods.log_admin_logout().send({
                     from: adminAccount,
                     value: logoutFee,
                 });
-
+    
                 alert("Logged out successfully!");
-                localStorage.removeItem("isAdminAuthenticated"); // Clear session
-                isAdminAuthenticated = false;
+                localStorage.clear(); // Clear session
                 location.href = "./index.html";
             } catch (error) {
                 console.error("Error during admin logout:", error);
                 alert("Failed to log out.");
             }
         }
-
+    
         async function initializePage() {
             try {
                 const web3Initialized = await initializeWeb3();
-                if (!web3Initialized) return;
-
-                await validateAdminLogin(); // Ensure admin authentication
+                if (!web3Initialized || !validateSession()) return;
+    
                 await loadAdminLogs(); // Load logs after validation
             } catch (error) {
                 console.error("Error initializing admin logs page:", error);
@@ -302,9 +302,10 @@
                 location.href = "./index.html";
             }
         }
-
+    
         initializePage(); // Initialize the page on load
     </script>
+    
 </body>
 
 </html>

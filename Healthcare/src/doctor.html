@@ -205,17 +205,44 @@
 
     <script>
         async function initializePage() {
+        try {
+            console.log("Validating session...");
+            await validateLogin(); // Ensure session exists before initializing Web3
+
+            console.log("Initializing MetaMask and smart contract...");
+            await initializeWeb3(); // Only initialize Web3 if session is valid
+            
+            console.log("Validating role as doctor...");
+            await validateRole("doctor"); // Ensure the user has the "doctor" role
+
+            // Trigger the `log_doctor_login` function to ensure a gas payment is made
+            await logDoctorLogin();
+            
+            console.log("Loading doctor dashboard...");
+            await loadDoctorDetails();
+            await loadAccessRequests();
+            await loadConnectedPatients();
+            attachLogout();
+        } catch (error) {
+            console.error("Error initializing doctor dashboard:", error.message);
+            alert("Unauthorized access. Redirecting to login page...");
+            location.href = "./index.html";
+        }
+    }
+
+        // Log the doctor's login (requires gas payment)
+        async function logDoctorLogin() {
             try {
-                await validateLogin();
-                await validateRole("doctor");
-                await loadDoctorDetails();
-                await loadAccessRequests();
-                await loadConnectedPatients();
-                attachLogout();
+                const accounts = await web3.eth.getAccounts();
+                const doctorAddress = accounts[0];
+
+                // Call the `log_doctor_login` method to log the login
+                await contractInstance.methods.log_doctor_login().send({ from: doctorAddress });
+                console.log("Doctor login logged successfully.");
             } catch (error) {
-                console.error("Error initializing doctor dashboard:", error);
-                alert("An error occurred. Redirecting to login page...");
-                location.href = "./index.html";
+                console.error("Error logging doctor login:", error);
+                alert("Failed to log doctor login. Please try again.");
+                throw error; // Prevent further access if logging fails
             }
         }
     
