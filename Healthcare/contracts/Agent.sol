@@ -45,7 +45,13 @@ contract Agent {
 
     // Admin address
     address public adminAddress;
-    
+
+    bool public requireApprovalForRoleSwitch = true; // Default: approval required
+
+    // Authentication fee and logout fee (settable by admin)
+    uint256 public authenticationFee = 0.01 ether;
+    uint256 public logoutFee = 0.005 ether;
+
     event AgentAdded(address indexed agent, string name, uint256 age, uint256 designation);
     event AccessRequested(address indexed patient, address indexed doctor, uint256 timestamp);
     event AccessGranted(address indexed doctor, address indexed patient, uint256 timestamp);
@@ -60,6 +66,8 @@ contract Agent {
     event RegistrationRequested(address indexed user, string name, uint256 designation, uint256 timestamp);
     event RegistrationApproved(address indexed user, uint256 designation, uint256 timestamp);
     event RegistrationRejected(address indexed user, uint256 designation, uint256 timestamp);
+    event AdminAuthenticated(address indexed admin, uint256 timestamp, uint256 feePaid);
+    event AdminLoggedOut(address indexed admin, uint256 timestamp, uint256 feePaid);
 
     constructor() {
         adminAddress = msg.sender; // Set the deployer's address as the admin
@@ -70,6 +78,36 @@ contract Agent {
         _;
     }
 
+        // Set authentication and logout fees
+    function setAuthenticationFee(uint256 fee) public onlyAdmin {
+        authenticationFee = fee;
+    }
+
+    function setLogoutFee(uint256 fee) public onlyAdmin {
+        logoutFee = fee;
+    }
+
+    // Admin authentication with fee
+    function log_admin_authentication() public payable {
+        require(msg.sender == adminAddress, "Caller is not the admin");
+        require(msg.value == authenticationFee, "Incorrect fee sent for authentication");
+
+        emit AdminAuthenticated(msg.sender, block.timestamp, msg.value);
+    }
+
+    // Admin logout with fee
+    function log_admin_logout() public payable {
+        require(msg.sender == adminAddress, "Caller is not the admin");
+        require(msg.value == logoutFee, "Incorrect fee sent for logout");
+
+        emit AdminLoggedOut(msg.sender, block.timestamp, msg.value);
+    }
+
+    // Withdraw collected funds
+    function withdrawFunds() public onlyAdmin {
+        payable(adminAddress).transfer(address(this).balance);
+    }
+
     // Add new admin function (only the current admin can add new admins)
     function add_admin(address newAdmin) public onlyAdmin {
         adminAddress = newAdmin; // Change the admin to the new address
@@ -78,6 +116,10 @@ contract Agent {
     // Check if the user is an admin
     function checkAdmin(address user) public view returns (bool) {
         return user == adminAddress;
+    }
+    
+    function setApprovalRequirementForRoleSwitch(bool _requireApproval) public onlyAdmin {
+    requireApprovalForRoleSwitch = _requireApproval;
     }
 
     // Modified add_agent_request to include name and age
@@ -109,45 +151,87 @@ contract Agent {
 
     // Approve registration function
     function approve_registration(
-        address user,
-        string memory _name,
-        uint256 _age,
-        uint256 _designation
-    ) public onlyAdmin {
-        require(bytes(_name).length > 0, "Name cannot be empty");
-        require(_age > 0, "Age must be greater than zero");
+    address user,
+    string memory _name,
+    uint256 _age,
+    uint256 _designation
+) public onlyAdmin {
+    require(bytes(_name).length > 0, "Name cannot be empty");
+    require(_age > 0, "Age must be greater than zero");
 
-        if (_designation == 0) {
-            require(isPendingPatientApproval[user], "User not in pending approvals");
-
-            Patient storage patient = patientInfo[user];
-            patient.name = _name;
-            patient.age = _age;
-
-            patientList.push(user);
-
-            isPendingPatientApproval[user] = false;
-            removePendingApproval(user, pendingPatientApprovals);
-        } else if (_designation == 1) {
-            require(isPendingDoctorApproval[user], "User not in pending approvals");
-
-            Doctor storage doctor = doctorInfo[user];
-            doctor.name = _name;
-            doctor.age = _age;
-
-            doctorList.push(user);
-
-            isPendingDoctorApproval[user] = false;
-            removePendingApproval(user, pendingDoctorApprovals);
-        } else {
-            revert("Invalid designation");
+    if (_designation == 0) { // Approve as Patient
+        // Remove from doctor-related mappings/lists if currently a Doctor
+        if (bytes(doctorInfo[user].name).length > 0) {
+            removeElementFromArray(doctorList, user);
+            delete doctorInfo[user];
         }
 
-        delete pendingNames[user];
-        delete pendingAges[user];
+        // Remove from pending doctor approvals if present
+        if (isPendingDoctorApproval[user]) {
+            isPendingDoctorApproval[user] = false;
+            removePendingApproval(user, pendingDoctorApprovals);
+        }
 
-        emit RegistrationApproved(user, _designation, block.timestamp);
+        // Prevent duplicate registration as Patient
+        if (bytes(patientInfo[user].name).length > 0) {
+            revert("User is already a registered patient.");
+        }
+
+        // Add to patient list
+        Patient storage patient = patientInfo[user];
+        patient.name = _name;
+        patient.age = _age;
+        patientList.push(user);
+
+        // Remove from pending patient approvals
+        if (isPendingPatientApproval[user]) {
+            isPendingPatientApproval[user] = false;
+            removePendingApproval(user, pendingPatientApprovals);
+        }
+
+        emit RegistrationApproved(user, 0, block.timestamp);
+
+    } else if (_designation == 1) { // Approve as Doctor
+        // Remove from patient-related mappings/lists if currently a Patient
+        if (bytes(patientInfo[user].name).length > 0) {
+            removeElementFromArray(patientList, user);
+            delete patientInfo[user];
+        }
+
+        // Remove from pending patient approvals if present
+        if (isPendingPatientApproval[user]) {
+            isPendingPatientApproval[user] = false;
+            removePendingApproval(user, pendingPatientApprovals);
+        }
+
+        // Prevent duplicate registration as Doctor
+        if (bytes(doctorInfo[user].name).length > 0) {
+            revert("User is already a registered doctor.");
+        }
+
+        // Add to doctor list
+        Doctor storage doctor = doctorInfo[user];
+        doctor.name = _name;
+        doctor.age = _age;
+        doctorList.push(user);
+
+        // Remove from pending doctor approvals
+        if (isPendingDoctorApproval[user]) {
+            isPendingDoctorApproval[user] = false;
+            removePendingApproval(user, pendingDoctorApprovals);
+        }
+
+        emit RegistrationApproved(user, 1, block.timestamp);
+
+    } else {
+        revert("Invalid designation");
     }
+
+    // Cleanup pending names and ages
+    delete pendingNames[user];
+    delete pendingAges[user];
+}
+
 
 
     // Reject registration function
@@ -177,6 +261,18 @@ contract Agent {
             if (list[i] == user) {
                 list[i] = list[length - 1];
                 list.pop();
+                break;
+            }
+        }
+    }
+
+    // Helper function to remove a user from the list
+    function removeElementFromArray(address[] storage list, address user) private {
+        uint256 length = list.length;
+        for (uint256 i = 0; i < length; i++) {
+            if (list[i] == user) {
+                list[i] = list[length - 1]; // Replace with the last element
+                list.pop(); // Remove the last element
                 break;
             }
         }
@@ -220,6 +316,22 @@ contract Agent {
         // Emit the event with the patient's address as addedBy
         emit MedicalRecordAdded(msg.sender, _diagnosis, _ipfsHash, msg.sender, block.timestamp);
     }
+
+    function addRecordByDoctor(address patient, string memory title, string memory description) public {
+        require(bytes(doctorInfo[msg.sender].name).length > 0, "Caller is not a registered doctor");
+        require(isAccessGranted(patient, msg.sender), "Doctor does not have access to this patient");
+
+        MedicalRecord memory newRecord = MedicalRecord({
+            diagnosis: title,
+            ipfsHash: description,
+            timestamp: block.timestamp
+        });
+
+        patientInfo[patient].records.push(newRecord);
+
+        emit MedicalRecordAdded(patient, title, description, msg.sender, block.timestamp);
+    }
+
 
     // Modify editPatientRecord function
     function editPatientRecord(uint256 index, string memory newDescription) public {
