@@ -182,13 +182,44 @@
             }
         }
 
+        // Role Validation
+        async function validateAdmin() {
+            try {
+                const accounts = await web3.eth.getAccounts();
+                const userAddress = accounts[0];
+
+                const isAdmin = await contractInstance.methods.checkAdmin(userAddress).call();
+
+                if (!isAdmin) {
+                    alert("Access denied: Unauthorized user.");
+                    location.href = "./index.html"; // Redirect to login page
+                }
+            } catch (error) {
+                console.error("Error validating admin role:", error);
+                alert("Failed to validate role. Redirecting...");
+                location.href = "./index.html";
+            }
+        }
+
         // Admin Logout
         async function adminLogout() {
             try {
-                alert("Logging out...");
+                const accounts = await web3.eth.getAccounts();
+                const adminAccount = accounts[0];
+
+                const logoutFee = await contractInstance.methods.logoutFee().call();
+                await contractInstance.methods.log_admin_logout().send({
+                    from: adminAccount,
+                    value: logoutFee,
+                });
+
+                alert("Logged out successfully!");
+                localStorage.removeItem("isAdminAuthenticated"); // Clear session
+                isAdminAuthenticated = false;
                 location.href = "./index.html";
             } catch (error) {
                 console.error("Error during admin logout:", error);
+                alert("Failed to log out.");
             }
         }
 
@@ -247,6 +278,7 @@
         window.onload = async () => {
             const web3Initialized = await initializeWeb3();
             if (web3Initialized) {
+                await validateAdmin(); // Ensure user is an admin
                 await loadRegisteredUsers();
             }
         };

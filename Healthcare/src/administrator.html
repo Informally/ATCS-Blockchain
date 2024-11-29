@@ -161,9 +161,8 @@
     <script src="js/contractConfig.js"></script>
 
     <script>
-        let web3;
+       let web3;
         let contractInstance;
-        let isAdminAuthenticated = false; // Track admin session
 
         // Initialize Web3 and Contract
         async function initializeWeb3() {
@@ -191,48 +190,68 @@
                 const accounts = await web3.eth.getAccounts();
                 const adminAccount = accounts[0];
 
-                // Check if the admin is already authenticated
+                // Check if admin session is active
                 const isAuthenticated = localStorage.getItem("isAdminAuthenticated");
                 if (isAuthenticated === "true") {
-                    isAdminAuthenticated = true;
-                    return; // Skip re-authentication
+                    return true; // Skip re-authentication
                 }
 
+                // Verify if the user is an admin
+                const isAdmin = await contractInstance.methods.checkAdmin(adminAccount).call();
+                if (!isAdmin) {
+                    alert("Access denied: Unauthorized user.");
+                    location.href = "./index.html";
+                    return false;
+                }
+
+                // Authenticate admin with gas fee
                 const authenticationFee = await contractInstance.methods.authenticationFee().call();
                 await contractInstance.methods.log_admin_authentication().send({
                     from: adminAccount,
                     value: authenticationFee,
                 });
 
-                alert("Admin authenticated successfully!");
-                localStorage.setItem("isAdminAuthenticated", "true");
-                isAdminAuthenticated = true;
+                localStorage.setItem("isAdminAuthenticated", "true"); // Mark session as authenticated
+                return true;
             } catch (error) {
                 console.error("Error during admin authentication:", error);
-                alert("Failed to authenticate admin.");
+                alert("Failed to authenticate admin. Redirecting...");
+                location.href = "./index.html";
+                return false;
+            }
+        }
+
+        // Role Validation: Ensure only Admin can access this page
+        async function validateAdmin() {
+            try {
+                const accounts = await web3.eth.getAccounts();
+                const userAddress = accounts[0];
+
+                const isAdmin = await contractInstance.methods.checkAdmin(userAddress).call();
+
+                if (!isAdmin) {
+                    alert("Access denied: Unauthorized user.");
+                    location.href = "./index.html"; // Redirect to login page
+                }
+            } catch (error) {
+                console.error("Error validating admin role:", error);
+                alert("Failed to validate role. Redirecting...");
                 location.href = "./index.html";
             }
         }
 
-        // Admin Logout
-        async function adminLogout() {
+        // Reset User Password
+        async function resetUserPassword() {
+            const userAddress = prompt("Enter the user's address:");
+            const newPassword = prompt("Enter the new password:");
+
             try {
                 const accounts = await web3.eth.getAccounts();
-                const adminAccount = accounts[0];
-
-                const logoutFee = await contractInstance.methods.logoutFee().call();
-                await contractInstance.methods.log_admin_logout().send({
-                    from: adminAccount,
-                    value: logoutFee,
-                });
-
-                alert("Logged out successfully!");
-                localStorage.removeItem("isAdminAuthenticated"); // Clear session
-                isAdminAuthenticated = false;
-                location.href = "./index.html";
+                await contractInstance.methods.adminResetPassword(userAddress, newPassword).send({ from: accounts[0] });
+                alert("Password reset successfully.");
             } catch (error) {
-                console.error("Error during admin logout:", error);
-                alert("Failed to log out.");
+                console.error("Error resetting password:", error);
+                alert("Failed to reset password.");
             }
         }
 
@@ -340,11 +359,33 @@
             }
         }
 
+        // Admin Logout
+        async function adminLogout() {
+            try {
+                const accounts = await web3.eth.getAccounts();
+                const adminAccount = accounts[0];
+
+                const logoutFee = await contractInstance.methods.logoutFee().call();
+                await contractInstance.methods.log_admin_logout().send({
+                    from: adminAccount,
+                    value: logoutFee,
+                });
+
+                alert("Logged out successfully!");
+                localStorage.removeItem("isAdminAuthenticated"); // Clear session
+                location.href = "./index.html";
+            } catch (error) {
+                console.error("Error during admin logout:", error);
+                alert("Failed to log out.");
+            }
+        }
+
         // Initialize the Page
         window.onload = async () => {
             const web3Initialized = await initializeWeb3();
             if (web3Initialized) {
                 await authenticateAdmin(); // Authenticate admin if not authenticated
+                // await validateAdmin(); // Ensure user is an admin
                 await loadRequestsAndLists(); // Load pending requests
             }
         };

@@ -109,6 +109,18 @@
                         </div>
                     </div>
                     <div class="form-group">
+                        <label class="control-label col-sm-2" for="username">Username:</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control" id="username" placeholder="Enter username" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label col-sm-2" for="password">Password:</label>
+                        <div class="col-sm-8">
+                            <input type="password" class="form-control" id="password" placeholder="Enter password" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
                         <label class="control-label col-sm-2" for="designation">Designation:</label>
                         <div class="col-sm-8">
                             <select class="form-control" id="designation" required>
@@ -120,6 +132,7 @@
                     </div>
                     <div class="text-center">
                         <button type="button" class="btn btn-primary btn-lg" onclick="register()">Register</button>
+                        <button type="button" class="btn btn-primary btn-lg" onclick="location.href='./index.html'">Go Back</button>
                     </div>
                 </form>
             </div>
@@ -159,17 +172,15 @@
                 const accounts = await web3.eth.getAccounts();
                 const publicKey = accounts[0];
 
-                // Check if user is already registered
                 const patient = await contractInstance.methods.get_patient(publicKey).call();
                 const doctor = await contractInstance.methods.get_doctor(publicKey).call();
-                
+
                 if (patient[0] || doctor[0]) {
                     alert("You are already registered. Please log in.");
                     location.href = "./index.html";
                     return false;
                 }
 
-                // Check if the user has a pending request
                 const isPatientPending = await contractInstance.methods.isPendingPatientApproval(publicKey).call();
                 const isDoctorPending = await contractInstance.methods.isPendingDoctorApproval(publicKey).call();
 
@@ -179,11 +190,11 @@
                     return false;
                 }
 
-                return true; // User can register
+                return true;
             } catch (error) {
                 console.error("Error checking registration status:", error);
                 alert("Error checking registration status. Please try again.");
-                return false; // Prevent registration
+                return false;
             }
         }
 
@@ -194,21 +205,20 @@
             try {
                 const name = document.getElementById("name").value.trim();
                 const age = parseInt(document.getElementById("age").value);
+                const username = document.getElementById("username").value.trim();
+                const password = document.getElementById("password").value.trim();
                 const designation = document.getElementById("designation").value;
 
-                // Validate inputs
-                if (!name || isNaN(age) || designation === "") {
+                if (!name || !username || !password || isNaN(age) || designation === "") {
                     alert("All fields are required to be filled.");
                     return;
                 }
 
-                // Validate age range
                 if (age < 10 || age > 99) {
                     alert("Please input an age which makes sense. TQ");
                     return;
                 }
 
-                // Validate doctor name
                 if (designation === "1" && !name.includes("(")) {
                     alert("Doctor name must include department in brackets (e.g., Doc (ENT)).");
                     return;
@@ -217,13 +227,13 @@
                 const accounts = await web3.eth.getAccounts();
                 const publicKey = accounts[0];
 
-                // Submit registration request to the contract
+                await contractInstance.methods.registerUser(username, password).send({ from: publicKey });
                 await contractInstance.methods.add_agent_request(name, age, parseInt(designation)).send({ from: publicKey });
 
-                alert("Registration request submitted successfully!");
-                location.href = "./index.html"; // Redirect to login page
+                alert("Registration and credentials setup successful!");
+                location.href = "./index.html";
             } catch (error) {
-                console.error("Error submitting registration:", error);
+                console.error("Error during registration:", error);
                 alert("Registration failed. Please try again.");
             }
         }

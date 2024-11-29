@@ -300,7 +300,7 @@
                 const timestamp = new Date(Number(records[2][selectedIndex]) * 1000).toLocaleString(); // Explicitly convert BigInt to number
 
                 recordContainer.innerHTML = `
-                    <h4>${selectedDiagnosis}</h4>
+
                     <div class="form-group">
                         <label for="descriptionBox"><strong>Description:</strong></label>
                         <textarea id="descriptionBox" class="form-control" rows="4" style="background-color: #333" readonly>${selectedDescription}</textarea>

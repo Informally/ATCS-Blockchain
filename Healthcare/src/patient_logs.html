@@ -252,7 +252,7 @@
                 <td>${log.logId}</td>
                 <td>${log.eventType}</td>
                 <td>${log.description}</td>
-                <td>${new Date(log.timestamp).toLocaleString()}</td>
+                <td>${new Date(log.timestamp * 1000).toLocaleString()}</td>
                 <td>${log.action}</td>
             `;
         });

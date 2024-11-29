@@ -234,27 +234,27 @@
         }
 
         async function loadAccessList() {
-    const accounts = await web3.eth.getAccounts();
-    const publicKey = accounts[0];
-    const accessTable = document.getElementById("accessTable");
-    accessTable.innerHTML = "";
+            const accounts = await web3.eth.getAccounts();
+            const publicKey = accounts[0];
+            const accessTable = document.getElementById("accessTable");
+            accessTable.innerHTML = "";
 
-    try {
-        const accessList = await contractInstance.methods.get_accessed_doctorlist_for_patient(publicKey).call();
-        const allDoctors = await contractInstance.methods.get_doctor_list().call();
+            try {
+                const accessList = await contractInstance.methods.get_accessed_doctorlist_for_patient(publicKey).call();
+                const allDoctors = await contractInstance.methods.get_doctor_list().call();
 
-        for (const doctor of allDoctors) {
-            const doctorDetails = await contractInstance.methods.get_doctor(doctor).call();
-            let status = "No Request";
+                for (const doctor of allDoctors) {
+                    const doctorDetails = await contractInstance.methods.get_doctor(doctor).call();
+                    let status = "No Request";
 
-            if (accessList.includes(doctor)) {
-                status = "Access Granted";
-            } else {
-                const pendingRequests = await contractInstance.methods.get_access_requests(doctor).call();
-                if (pendingRequests.includes(publicKey)) {
-                    status = "Request Pending";
-                }
-            }
+                    if (accessList.includes(doctor)) {
+                        status = "Access Granted";
+                    } else {
+                        const pendingRequests = await contractInstance.methods.get_access_requests(doctor).call();
+                        if (pendingRequests.includes(publicKey)) {
+                            status = "Request Pending";
+                        }
+                    }
 
             const row = `<tr>
                 <td>${doctorDetails[0]}</td>
@@ -263,10 +263,10 @@
             </tr>`;
             accessTable.innerHTML += row;
         }
-    } catch (error) {
-        console.error("Error loading access list:", error);
-    }
-}
+            } catch (error) {
+                console.error("Error loading access list:", error);
+            }
+        }
 
 
         async function requestAccess() {
