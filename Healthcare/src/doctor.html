@@ -27,6 +27,17 @@
             border-radius: 8px;
         }
 
+        textarea {
+            resize: none; /* Disable resizing */
+            border: 1px solid #555; /* Add border for better visibility */
+            background-color: #333; /* Match the theme */
+            color: #fff; /* Text color */
+            border-radius: 4px; /* Rounded corners */
+            padding: 10px; /* Add padding inside */
+            width: 100%; /* Make it responsive */
+            height: 100px; /* Fixed height */
+        }
+
         .panel-heading {
             background-color: #282828;
             border: none;
@@ -207,48 +218,167 @@
                 location.href = "./index.html";
             }
         }
-
+    
         async function loadDoctorDetails() {
             const accounts = await web3.eth.getAccounts();
             const publicKey = accounts[0];
             const doctor = await contractInstance.methods.get_doctor(publicKey).call();
-            document.getElementById("name").textContent = doctor[0];
-            document.getElementById("age").textContent = doctor[1];
+            document.getElementById("name").textContent = doctor[0] || "N/A";
+            document.getElementById("age").textContent = doctor[1] || "N/A";
         }
-
+    
         async function loadAccessRequests() {
             const accounts = await web3.eth.getAccounts();
             const publicKey = accounts[0];
             const accessRequests = await contractInstance.methods.get_access_requests(publicKey).call();
             const table = document.getElementById("accessRequestsTable");
-            table.innerHTML = accessRequests.length
-                ? accessRequests.map(requestRow).join("")
-                : "<tr><td colspan='3'>No pending requests</td></tr>";
+            if (accessRequests.length) {
+                table.innerHTML = "";
+                for (const patient of accessRequests) {
+                    const patientName = await contractInstance.methods.getAgentName(patient).call();
+                    const row = `
+                        <tr>
+                            <td>${patientName || "Unknown"}</td>
+                            <td>${patient}</td>
+                            <td>
+                                <button class="btn btn-success" onclick="acceptRequest('${patient}')">Accept</button>
+                                <button class="btn btn-danger" onclick="rejectRequest('${patient}')">Reject</button>
+                            </td>
+                        </tr>
+                    `;
+                    table.innerHTML += row;
+                }
+            } else {
+                table.innerHTML = "<tr><td colspan='3'>No pending requests</td></tr>";
+            }
         }
-
+    
         async function loadConnectedPatients() {
             const accounts = await web3.eth.getAccounts();
             const publicKey = accounts[0];
             const connectedPatients = await contractInstance.methods.get_accessed_patientlist_for_doctor(publicKey).call();
             const table = document.getElementById("connectedPatientsTable");
-            table.innerHTML = connectedPatients.length
-                ? connectedPatients.map(connectedRow).join("")
-                : "<tr><td colspan='3'>No connected patients</td></tr>";
+            if (connectedPatients.length) {
+                table.innerHTML = "";
+                for (const patient of connectedPatients) {
+                    const patientName = await contractInstance.methods.getAgentName(patient).call();
+                    const row = `
+                        <tr>
+                            <td>${patientName || "Unknown"}</td>
+                            <td>${patient}</td>
+                            <td>
+                                <button class="btn btn-primary" onclick="viewPatientRecords('${patient}')">View Records</button>
+                            </td>
+                        </tr>
+                    `;
+                    table.innerHTML += row;
+                }
+            } else {
+                table.innerHTML = "<tr><td colspan='3'>No connected patients</td></tr>";
+            }
         }
 
-        const requestRow = (patient) => `
-            <tr>
-                <td>${patient.name}</td>
-                <td>${patient}</td>
-                <td>
-                    <button class="btn btn-success" onclick="acceptRequest('${patient}')">Accept</button>
-                    <button class="btn btn-danger" onclick="rejectRequest('${patient}')">Reject</button>
-                </td>
-            </tr>
-        `;
+        async function loadSelectedRecord() {
+            const recordDropdown = document.getElementById("recordDropdown");
+            const recordContainer = document.getElementById("selectedRecordContainer");
+            const selectedIndex = recordDropdown.value;
+
+            if (selectedIndex === "") {
+                recordContainer.innerHTML = "<p>No record selected.</p>";
+                return;
+            }
+
+            try {
+                if (!currentPatient) {
+                    throw new Error("No patient selected.");
+                }
+
+                const records = await contractInstance.methods.getMedicalRecords(currentPatient).call();
+
+                const selectedDiagnosis = records[0][selectedIndex]; // Diagnosis title
+                const selectedDescription = records[1][selectedIndex]; // IPFS hash or description
+                const timestamp = new Date(Number(records[2][selectedIndex]) * 1000).toLocaleString(); // Explicitly convert BigInt to number
+
+                recordContainer.innerHTML = `
+                    <h4>${selectedDiagnosis}</h4>
+                    <div class="form-group">
+                        <label for="descriptionBox"><strong>Description:</strong></label>
+                        <textarea id="descriptionBox" class="form-control" rows="4" style="background-color: #333" readonly>${selectedDescription}</textarea>
+                    </div>
+                    <p><strong>Timestamp:</strong> ${timestamp}</p>
+                `;
+            } catch (error) {
+                console.error("Error loading selected record:", error);
+                recordContainer.innerHTML = "<p>Error loading the selected record.</p>";
+            }
+        }
+
+        async function acceptRequest(patientAddress) {
+            try {
+                const accounts = await web3.eth.getAccounts();
+                const doctorAddress = accounts[0];
+                await contractInstance.methods.accept_access_request(patientAddress).send({ from: doctorAddress });
+                alert("Request accepted successfully!");
+                await loadAccessRequests();
+                await loadConnectedPatients();
+            } catch (error) {
+                console.error("Error accepting request:", error);
+                alert("Failed to accept the request.");
+            }
+        }
+    
+        async function rejectRequest(patientAddress) {
+            try {
+                const accounts = await web3.eth.getAccounts();
+                const doctorAddress = accounts[0];
+                await contractInstance.methods.reject_access_request(patientAddress).send({ from: doctorAddress });
+                alert("Request rejected successfully!");
+                await loadAccessRequests();
+            } catch (error) {
+                console.error("Error rejecting request:", error);
+                alert("Failed to reject the request.");
+            }
+        }
+    
+        let currentPatient = null; // Declare currentPatient at the global level
+
+        async function viewPatientRecords(patientAddress) {
+            try {
+                currentPatient = patientAddress; // Assign the current patient address
+
+                const records = await contractInstance.methods.getMedicalRecords(patientAddress).call();
+                const recordDropdown = document.getElementById("recordDropdown");
+                const recordContainer = document.getElementById("selectedRecordContainer");
+
+                recordDropdown.innerHTML = `<option value="" disabled selected>--Select Diagnosis--</option>`;
+                recordContainer.innerHTML = "";
+
+                if (records[0].length) {
+                    records[0].forEach((diagnosis, index) => {
+                        const option = document.createElement("option");
+                        option.value = index;
+                        option.textContent = diagnosis;
+                        recordDropdown.appendChild(option);
+                    });
+
+                    document.getElementById("patientRecordsPanel").style.display = "block";
+                } else {
+                    alert("No records available for this patient.");
+                }
+            } catch (error) {
+                console.error("Error loading patient records:", error);
+                alert("Failed to load patient records.");
+            }
+        }
+
+        function closeRecordsPanel() {
+            document.getElementById("patientRecordsPanel").style.display = "none";
+            currentPatient = null; // Reset currentPatient
+        }
 
         initializePage();
     </script>
+    
 </body>
 
 </html>

@@ -91,19 +91,25 @@ function attachLogout() {
             const publicKey = accounts[0];
 
             try {
-                const patient = await contractInstance.methods.get_patient(publicKey).call();
-                if (patient[0]) {
-                    await contractInstance.methods.log_patient_logout().send({ from: publicKey });
-                    console.log("Patient logged out successfully.");
+                const isAdmin = await contractInstance.methods.checkAdmin(publicKey).call();
+                if (isAdmin) {
+                    await contractInstance.methods.log_admin_logout().send({ from: publicKey });
+                    console.log("Admin logged out.");
                 } else {
-                    const doctor = await contractInstance.methods.get_doctor(publicKey).call();
-                    if (doctor[0]) {
-                        await contractInstance.methods.log_doctor_logout().send({ from: publicKey });
-                        console.log("Doctor logged out successfully.");
+                    const patient = await contractInstance.methods.get_patient(publicKey).call();
+                    if (patient[0]) {
+                        await contractInstance.methods.log_patient_logout().send({ from: publicKey });
+                        console.log("Patient logged out successfully.");
                     } else {
-                        console.error("Unrecognized user role.");
-                        alert("Unrecognized user role. Unable to log out.");
-                        return;
+                        const doctor = await contractInstance.methods.get_doctor(publicKey).call();
+                        if (doctor[0]) {
+                            await contractInstance.methods.log_doctor_logout().send({ from: publicKey });
+                            console.log("Doctor logged out successfully.");
+                        } else {
+                            console.error("Unrecognized user role.");
+                            alert("Unrecognized user role. Unable to log out.");
+                            return;
+                        }
                     }
                 }
             } catch (error) {
@@ -118,6 +124,7 @@ function attachLogout() {
         console.error("Logout button not found.");
     }
 }
+
 
 // Initialize Page
 async function initializePage(expectedRole) {

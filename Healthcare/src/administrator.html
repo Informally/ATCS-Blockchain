@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -19,17 +20,77 @@
             background-color: #121212;
             color: #ffffff;
         }
-        .panel { background-color: #1c1c1c; border: 1px solid #333; border-radius: 8px; }
-        .panel-heading { background-color: #282828; border: none; color: #ffffff; text-align: center; font-size: 1.5rem; padding: 10px; border-top-left-radius: 8px; border-top-right-radius: 8px; }
-        .panel-body { padding: 20px; }
-        .table { color: #ffffff; }
-        .table th, .table td { border-top: none; }
-        .table-hover tbody tr:hover { background-color: #2a2a2a; color: #ffffff; }
-        .btn { margin-right: 5px; }
-        .approve { background-color: #28a745; color: #fff; }
-        .reject { background-color: #dc3545; color: #fff; }
+
+        .panel {
+            background-color: #1c1c1c;
+            border: 1px solid #333;
+            border-radius: 8px;
+        }
+
+        .panel-heading {
+            background-color: #282828;
+            border: none;
+            color: #ffffff;
+            text-align: center;
+            font-size: 1.5rem;
+            padding: 10px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+        }
+
+        .panel-body {
+            padding: 20px;
+        }
+
+        .table {
+            color: #ffffff;
+        }
+
+        .table th,
+        .table td {
+            border-top: none;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: #2a2a2a;
+            color: #ffffff;
+        }
+
+        .btn {
+            margin-right: 5px;
+        }
+
+        .approve {
+            background-color: #28a745;
+            color: #fff;
+        }
+
+        .reject {
+            background-color: #dc3545;
+            color: #fff;
+        }
+
+        .navigation-buttons {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .btn-navigation {
+            margin: 10px;
+            background-color: #2979ff;
+            border: none;
+            color: white;
+            padding: 10px 30px;
+            border-radius: 4px;
+            text-decoration: none;
+        }
+
+        .btn-navigation:hover {
+            background-color: #1e60cc;
+        }
     </style>
 </head>
+
 <body>
 
     <!-- Navigation -->
@@ -39,7 +100,7 @@
                 <a class="navbar-brand" href="#">Admin Dashboard</a>
             </div>
             <ul class="nav navbar-nav navbar-right">
-                <li><a id="logoutButton" href="#">Logout</a></li>
+                <li><a id="logoutButton" href="#" onclick="adminLogout()">Logout</a></li>
             </ul>
         </div>
     </nav>
@@ -87,6 +148,12 @@
         </div>
     </div>
 
+    <!-- Navigation Buttons -->
+    <div class="container navigation-buttons">
+        <a href="administrator_view.html" class="btn-navigation">View Registered Users</a>
+        <a href="administrator_logs.html" class="btn-navigation">View Admin Logs</a>
+    </div>
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
     <script src="js/jquery.js"></script>
@@ -96,6 +163,7 @@
     <script>
         let web3;
         let contractInstance;
+        let isAdminAuthenticated = false; // Track admin session
 
         // Initialize Web3 and Contract
         async function initializeWeb3() {
@@ -117,89 +185,147 @@
             }
         }
 
-        // Load Pending Requests
-        async function loadPendingRequests() {
+        // Admin Authentication
+        async function authenticateAdmin() {
             try {
                 const accounts = await web3.eth.getAccounts();
                 const adminAccount = accounts[0];
 
+                // Check if the admin is already authenticated
+                const isAuthenticated = localStorage.getItem("isAdminAuthenticated");
+                if (isAuthenticated === "true") {
+                    isAdminAuthenticated = true;
+                    return; // Skip re-authentication
+                }
+
+                const authenticationFee = await contractInstance.methods.authenticationFee().call();
+                await contractInstance.methods.log_admin_authentication().send({
+                    from: adminAccount,
+                    value: authenticationFee,
+                });
+
+                alert("Admin authenticated successfully!");
+                localStorage.setItem("isAdminAuthenticated", "true");
+                isAdminAuthenticated = true;
+            } catch (error) {
+                console.error("Error during admin authentication:", error);
+                alert("Failed to authenticate admin.");
+                location.href = "./index.html";
+            }
+        }
+
+        // Admin Logout
+        async function adminLogout() {
+            try {
+                const accounts = await web3.eth.getAccounts();
+                const adminAccount = accounts[0];
+
+                const logoutFee = await contractInstance.methods.logoutFee().call();
+                await contractInstance.methods.log_admin_logout().send({
+                    from: adminAccount,
+                    value: logoutFee,
+                });
+
+                alert("Logged out successfully!");
+                localStorage.removeItem("isAdminAuthenticated"); // Clear session
+                isAdminAuthenticated = false;
+                location.href = "./index.html";
+            } catch (error) {
+                console.error("Error during admin logout:", error);
+                alert("Failed to log out.");
+            }
+        }
+
+        // Load Pending Requests
+        async function loadRequestsAndLists() {
+            try {
+                const accounts = await web3.eth.getAccounts();
+                const adminAccount = accounts[0];
+
+                // Fetch all pending patient and doctor approvals
                 const pendingPatients = await contractInstance.methods.get_pending_patient_approvals().call({ from: adminAccount });
                 const pendingDoctors = await contractInstance.methods.get_pending_doctor_approvals().call({ from: adminAccount });
 
                 populateTable("patientRequestsTable", pendingPatients, 0); // Patients: Designation 0
                 populateTable("doctorRequestsTable", pendingDoctors, 1);   // Doctors: Designation 1
             } catch (error) {
-                console.error("Error loading pending requests:", error);
-                alert("Failed to load pending requests.");
+                console.error("Error loading requests and lists:", error);
+                alert("Failed to load requests and lists.");
             }
         }
 
-        // Populate Table with Name, Age, Address
+        // Populate Table with Pending Requests
         async function populateTable(tableId, addresses, designation) {
             const tableBody = document.getElementById(tableId).querySelector("tbody");
-            tableBody.innerHTML = ""; // Clear existing rows
+            tableBody.innerHTML = "";
 
             if (addresses.length === 0) {
                 const emptyRow = document.createElement("tr");
                 const emptyCell = document.createElement("td");
-                emptyCell.colSpan = 4;
-                emptyCell.innerText = "No pending requests.";
+                emptyCell.colSpan = 5;
+                emptyCell.innerText = "No entries found.";
                 emptyRow.appendChild(emptyCell);
                 tableBody.appendChild(emptyRow);
                 return;
             }
 
             for (const address of addresses) {
-                const name = await contractInstance.methods.pendingNames(address).call();
-                const age = await contractInstance.methods.pendingAges(address).call();
+                let name, age;
+                try {
+                    name = await contractInstance.methods.pendingNames(address).call();
+                    age = await contractInstance.methods.pendingAges(address).call();
+                } catch (error) {
+                    console.error("Error fetching data for address:", error);
+                    continue;
+                }
+
+                const role = designation === 0 ? "Patient" : "Doctor";
 
                 const row = document.createElement("tr");
-
                 row.innerHTML = `
                     <td>${name}</td>
                     <td>${age}</td>
+                    <td>${role}</td>
                     <td>${address}</td>
                     <td>
                         <button class="btn approve" onclick="approveRegistration('${address}', ${designation})">Approve</button>
                         <button class="btn reject" onclick="rejectRegistration('${address}', ${designation})">Reject</button>
                     </td>
                 `;
-
                 tableBody.appendChild(row);
             }
         }
 
-        // Approve or Reject Registration
+        // Approve Registration with Modifications
         async function approveRegistration(address, designation) {
             try {
-                // Get the current pending name and age from the contract
                 const pendingName = await contractInstance.methods.pendingNames(address).call();
                 const pendingAge = await contractInstance.methods.pendingAges(address).call();
+                const currentRole = designation === 0 ? "Patient" : "Doctor";
 
-                // Prompt the admin to edit the name and age
                 const name = prompt("Approve Name:", pendingName);
                 const age = prompt("Approve Age:", pendingAge);
+                let role = prompt("Approve Role (type 'Patient' or 'Doctor'):", currentRole).trim();
 
-                // Validate the inputs
-                if (!name || isNaN(age) || parseInt(age) <= 0) {
-                    alert("Invalid input. Name and age are required.");
+                if (!name || isNaN(age) || parseInt(age) <= 0 || (role.toLowerCase() !== "patient" && role.toLowerCase() !== "doctor")) {
+                    alert("Invalid input. Name, age, and role (Patient or Doctor) are required.");
                     return;
                 }
 
-                // Retrieve accounts to specify the `from` address
+                const roleDesignation = role.toLowerCase() === "patient" ? 0 : 1;
+
                 const accounts = await web3.eth.getAccounts();
                 const adminAddress = accounts[0];
 
-                // Call the approve_registration function with the updated name and age
                 await contractInstance.methods
-                    .approve_registration(address, name, parseInt(age), designation)
+                    .approve_registration(address, name, parseInt(age), roleDesignation)
                     .send({ from: adminAddress });
 
                 alert("Registration approved successfully!");
-                location.reload(); // Refresh the page to reflect the updated data
+                await loadRequestsAndLists();
             } catch (error) {
                 console.error("Error approving registration:", error);
-                alert("Failed to approve registration. Please try again.");
+                alert("Failed to approve registration.");
             }
         }
 
@@ -208,7 +334,7 @@
                 const accounts = await web3.eth.getAccounts();
                 await contractInstance.methods.reject_registration(address, designation).send({ from: accounts[0] });
                 alert("Registration rejected!");
-                loadPendingRequests();
+                await loadRequestsAndLists();
             } catch (error) {
                 console.error("Error rejecting registration:", error);
             }
@@ -217,8 +343,12 @@
         // Initialize the Page
         window.onload = async () => {
             const web3Initialized = await initializeWeb3();
-            if (web3Initialized) await loadPendingRequests();
+            if (web3Initialized) {
+                await authenticateAdmin(); // Authenticate admin if not authenticated
+                await loadRequestsAndLists(); // Load pending requests
+            }
         };
     </script>
+
 </body>
 </html>

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Admin Logs</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+
+    <!-- Custom CSS -->
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+        }
+
+        .table-container {
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+
+        .table {
+            background-color: #1c1c1c;
+            color: #ffffff;
+            border: 1px solid #333;
+            width: 100%;
+            text-align: left;
+        }
+
+        .table th,
+        .table td {
+            padding: 12px;
+            border: 1px solid #333;
+        }
+
+        .table th {
+            background-color: #2c2c2c;
+            color: #2979ff;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: #2a2a2a;
+        }
+
+        .panel-heading {
+            text-align: center;
+            font-size: 1.8rem;
+            background-color: #282828;
+            color: #ffffff;
+            padding: 15px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+        }
+
+        .navigation-buttons {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .btn-navigation {
+            margin: 10px;
+            background-color: #2979ff;
+            border: none;
+            color: white;
+            padding: 10px 30px;
+            border-radius: 4px;
+            text-decoration: none;
+        }
+
+        .btn-navigation:hover {
+            background-color: #1e60cc;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-inverse navbar-static-top">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <a class="navbar-brand" href="administrator.html">Admin Dashboard</a>
+            </div>
+            <ul class="nav navbar-nav navbar-right">
+                <li><a href="administrator.html">Dashboard</a></li>
+                <li><a href="administrator_view.html">View</a></li>
+                <li><a id="logoutButton" href="#" onclick="adminLogout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Page Content -->
+    <div class="container">
+        <h2 class="text-center">Admin Activity Logs</h2>
+        <div class="table-container">
+            <table class="table table-hover" id="logTable">
+                <thead>
+                    <tr>
+                        <th>Log ID</th>
+                        <th>Event Type</th>
+                        <th>Description</th>
+                        <th>Timestamp</th>
+                        <th>Status/Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Logs will be dynamically inserted here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Navigation Buttons -->
+    <div class="container navigation-buttons">
+        <a href="administrator.html" class="btn-navigation">Admin Dashboard</a>
+        <a href="administrator_view.html" class="btn-navigation">View Registered Users</a>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <script src="js/jquery.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/contractConfig.js"></script>
+
+    <script>
+        let web3;
+        let contractInstance;
+
+        async function initializeWeb3() {
+            if (!window.ethereum) {
+                alert("Please install MetaMask to use this application.");
+                location.href = "./index.html";
+                return false;
+            }
+
+            try {
+                web3 = new Web3(window.ethereum);
+                await window.ethereum.request({ method: "eth_requestAccounts" });
+                contractInstance = new web3.eth.Contract(contractABI, contractAddress);
+                return true;
+            } catch (error) {
+                console.error("Error initializing Web3:", error);
+                alert("Failed to connect to MetaMask.");
+                return false;
+            }
+        }
+
+        async function loadAdminLogs() {
+            try {
+                const accounts = await web3.eth.getAccounts();
+                const adminAddress = accounts[0];
+                const logTable = document.getElementById("logTable").getElementsByTagName("tbody")[0];
+                logTable.innerHTML = ""; // Clear existing logs
+
+                const logs = [];
+
+                // Fetch Admin Login logs
+                const loginLogs = await contractInstance.getPastEvents("AdminAuthenticated", {
+                    filter: { admin: adminAddress },
+                    fromBlock: 0,
+                    toBlock: "latest",
+                });
+
+                for (const log of loginLogs) {
+                    const timestamp = BigInt(log.returnValues.timestamp); // Handle as BigInt
+                    logs.push({
+                        eventType: "Login",
+                        description: "Admin authenticated successfully.",
+                        timestamp: Number(timestamp) * 1000, // Convert to milliseconds
+                        action: "Authenticated",
+                    });
+                }
+
+                // Fetch Admin Logout logs
+                const logoutLogs = await contractInstance.getPastEvents("AdminLoggedOut", {
+                    filter: { admin: adminAddress },
+                    fromBlock: 0,
+                    toBlock: "latest",
+                });
+
+                for (const log of logoutLogs) {
+                    const timestamp = BigInt(log.returnValues.timestamp); // Handle as BigInt
+                    logs.push({
+                        eventType: "Logout",
+                        description: "Admin logged out successfully.",
+                        timestamp: Number(timestamp) * 1000, // Convert to milliseconds
+                        action: "Logged Out",
+                    });
+                }
+
+                // Fetch Admin Approve/Reject Logs
+                const registrationLogs = await contractInstance.getPastEvents("RegistrationApproved", {
+                    filter: { admin: adminAddress },
+                    fromBlock: 0,
+                    toBlock: "latest",
+                });
+
+                for (const log of registrationLogs) {
+                    const { user, designation, timestamp } = log.returnValues;
+                    logs.push({
+                        eventType: "Approval",
+                        description: `Admin approved registration for ${designation === "0" ? "Patient" : "Doctor"} with address ${user}.`,
+                        timestamp: Number(BigInt(timestamp)) * 1000, // Convert to milliseconds
+                        action: "Approved",
+                    });
+                }
+
+                const rejectedLogs = await contractInstance.getPastEvents("RegistrationRejected", {
+                    filter: { admin: adminAddress },
+                    fromBlock: 0,
+                    toBlock: "latest",
+                });
+
+                for (const log of rejectedLogs) {
+                    const { user, designation, timestamp } = log.returnValues;
+                    logs.push({
+                        eventType: "Rejection",
+                        description: `Admin rejected registration for ${designation === "0" ? "Patient" : "Doctor"} with address ${user}.`,
+                        timestamp: Number(BigInt(timestamp)) * 1000, // Convert to milliseconds
+                        action: "Rejected",
+                    });
+                }
+
+                // Sort logs by timestamp (descending)
+                logs.sort((a, b) => b.timestamp - a.timestamp);
+
+                // Reverse Log ID while maintaining descending timestamp order
+                logs.forEach((log, index) => {
+                    const row = logTable.insertRow();
+                    row.innerHTML = `
+                        <td>${logs.length - index}</td>
+                        <td>${log.eventType}</td>
+                        <td>${log.description}</td>
+                        <td>${new Date(log.timestamp).toLocaleString()}</td>
+                        <td>${log.action}</td>
+                    `;
+                });
+
+
+                if (logs.length === 0) {
+                    const row = logTable.insertRow();
+                    row.innerHTML = `<td colspan="5" class="text-center">No logs available.</td>`;
+                }
+            } catch (error) {
+                console.error("Error loading admin logs:", error);
+                alert("Failed to load admin logs. Please try again later.");
+            }
+        }
+
+        async function validateAdminLogin() {
+            try {
+                const accounts = await web3.eth.getAccounts();
+                const isAdmin = await contractInstance.methods.checkAdmin(accounts[0]).call();
+                if (!isAdmin) {
+                    throw new Error("Not an admin.");
+                }
+            } catch (error) {
+                console.error("Error validating admin login:", error);
+                alert("You are not authorized to view this page.");
+                location.href = "./index.html";
+            }
+        }
+
+        // Admin Logout
+        async function adminLogout() {
+            try {
+                const accounts = await web3.eth.getAccounts();
+                const adminAccount = accounts[0];
+
+                const logoutFee = await contractInstance.methods.logoutFee().call();
+                await contractInstance.methods.log_admin_logout().send({
+                    from: adminAccount,
+                    value: logoutFee,
+                });
+
+                alert("Logged out successfully!");
+                localStorage.removeItem("isAdminAuthenticated"); // Clear session
+                isAdminAuthenticated = false;
+                location.href = "./index.html";
+            } catch (error) {
+                console.error("Error during admin logout:", error);
+                alert("Failed to log out.");
+            }
+        }
+
+        async function initializePage() {
+            try {
+                const web3Initialized = await initializeWeb3();
+                if (!web3Initialized) return;
+
+                await validateAdminLogin(); // Ensure admin authentication
+                await loadAdminLogs(); // Load logs after validation
+            } catch (error) {
+                console.error("Error initializing admin logs page:", error);
+                alert("An error occurred. Redirecting to login page...");
+                location.href = "./index.html";
+            }
+        }
+
+        initializePage(); // Initialize the page on load
+    </script>
+</body>
+
+</html>

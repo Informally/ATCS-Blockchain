@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Admin View Users</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+
+    <!-- Custom CSS -->
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+        }
+
+        .panel {
+            background-color: #1c1c1c;
+            border: 1px solid #333;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .panel-heading {
+            background-color: #282828;
+            border: none;
+            color: #ffffff;
+            text-align: center;
+            font-size: 1.5rem;
+            padding: 10px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+        }
+
+        .panel-body {
+            padding: 20px;
+        }
+
+        .table {
+            color: #ffffff;
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table th,
+        .table td {
+            border: 1px solid #333;
+            padding: 12px;
+            text-align: left;
+        }
+
+        .table th {
+            background-color: #2c2c2c;
+            color: #2979ff;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: #2a2a2a;
+            color: #ffffff;
+        }
+
+        .navigation-buttons {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .btn-navigation {
+            margin: 10px;
+            background-color: #2979ff;
+            border: none;
+            color: white;
+            padding: 10px 30px;
+            border-radius: 4px;
+            text-decoration: none;
+        }
+
+        .btn-navigation:hover {
+            background-color: #1e60cc;
+        }
+    </style>
+</head>
+
+<body>
+    
+   <!-- Navigation -->
+   <nav class="navbar navbar-inverse navbar-static-top">
+    <div class="container-fluid">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="administrator.html">Admin Dashboard</a>
+        </div>
+        <ul class="nav navbar-nav navbar-right">
+            <li><a href="administrator.html">Dashboard</a></li>
+            <li><a href="administrator_logs.html">Logs</a></li>
+            <li><a id="logoutButton" href="#" onclick="adminLogout()">Logout</a></li>
+        </ul>
+    </div>
+</nav>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Registered Patients -->
+        <div class="panel">
+            <div class="panel-heading">Registered Patients</div>
+            <div class="panel-body">
+                <table class="table table-hover" id="registeredPatientsTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>Age</th>
+                            <th>Address</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Registered patients rows will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Registered Doctors -->
+        <div class="panel">
+            <div class="panel-heading">Registered Doctors</div>
+            <div class="panel-body">
+                <table class="table table-hover" id="registeredDoctorsTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>Age</th>
+                            <th>Address</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Registered doctors rows will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Buttons -->
+    <div class="container navigation-buttons">
+        <a href="administrator.html" class="btn-navigation">Admin Dashboard</a>
+        <a href="administrator_logs.html" class="btn-navigation">View Admin Logs</a>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <script src="js/jquery.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/contractConfig.js"></script>
+
+    <script>
+        let web3;
+        let contractInstance;
+
+        // Initialize Web3 and Contract
+        async function initializeWeb3() {
+            if (!window.ethereum) {
+                alert("Please install MetaMask to use this application.");
+                location.href = "./index.html";
+                return false;
+            }
+
+            try {
+                web3 = new Web3(window.ethereum);
+                await window.ethereum.request({ method: "eth_requestAccounts" });
+                contractInstance = new web3.eth.Contract(contractABI, contractAddress);
+                return true;
+            } catch (error) {
+                console.error("Error initializing Web3:", error);
+                alert("Failed to connect to MetaMask.");
+                return false;
+            }
+        }
+
+        // Admin Logout
+        async function adminLogout() {
+            try {
+                alert("Logging out...");
+                location.href = "./index.html";
+            } catch (error) {
+                console.error("Error during admin logout:", error);
+            }
+        }
+
+        // Load Registered Users
+        async function loadRegisteredUsers() {
+            try {
+                const accounts = await web3.eth.getAccounts();
+                const adminAccount = accounts[0];
+
+                // Fetch registered patients and doctors
+                const registeredPatients = await contractInstance.methods.get_patient_list().call({ from: adminAccount });
+                const registeredDoctors = await contractInstance.methods.get_doctor_list().call({ from: adminAccount });
+
+                populateRegisteredTable("registeredPatientsTable", registeredPatients, "patient");
+                populateRegisteredTable("registeredDoctorsTable", registeredDoctors, "doctor");
+            } catch (error) {
+                console.error("Error loading registered users:", error);
+                alert("Failed to load registered users.");
+            }
+        }
+
+        // Populate Registered Table
+        async function populateRegisteredTable(tableId, addresses, userType) {
+            const tableBody = document.getElementById(tableId).querySelector("tbody");
+            tableBody.innerHTML = "";
+
+            if (addresses.length === 0) {
+                const emptyRow = `<tr><td colspan="4">No entries found.</td></tr>`;
+                tableBody.innerHTML = emptyRow;
+                return;
+            }
+
+            addresses.forEach(async (address, index) => {
+                try {
+                    let userDetails;
+                    if (userType === "patient") {
+                        userDetails = await contractInstance.methods.get_patient(address).call();
+                    } else if (userType === "doctor") {
+                        userDetails = await contractInstance.methods.get_doctor(address).call();
+                    }
+
+                    const row = `<tr>
+                        <td>${index + 1}</td>
+                        <td>${userDetails[0]}</td>
+                        <td>${userDetails[1]}</td>
+                        <td>${address}</td>
+                    </tr>`;
+                    tableBody.innerHTML += row;
+                } catch (error) {
+                    console.error(`Error fetching ${userType} data for address ${address}:`, error);
+                }
+            });
+        }
+
+        // Initialize the Page
+        window.onload = async () => {
+            const web3Initialized = await initializeWeb3();
+            if (web3Initialized) {
+                await loadRegisteredUsers();
+            }
+        };
+    </script>
+</body>
+
+</html>

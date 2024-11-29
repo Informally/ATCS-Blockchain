@@ -234,21 +234,40 @@
         }
 
         async function loadAccessList() {
-            const accounts = await web3.eth.getAccounts();
-            const publicKey = accounts[0];
-            try {
-                const accessList = await contractInstance.methods.get_accessed_doctorlist_for_patient(publicKey).call();
-                const accessTable = document.getElementById("accessTable");
-                accessTable.innerHTML = "";
-                for (const doctor of accessList) {
-                    const doctorDetails = await contractInstance.methods.get_doctor(doctor).call();
-                    const row = `<tr><td>${doctorDetails[0]}</td><td>${doctor}</td><td>Access Granted</td></tr>`;
-                    accessTable.innerHTML += row;
+    const accounts = await web3.eth.getAccounts();
+    const publicKey = accounts[0];
+    const accessTable = document.getElementById("accessTable");
+    accessTable.innerHTML = "";
+
+    try {
+        const accessList = await contractInstance.methods.get_accessed_doctorlist_for_patient(publicKey).call();
+        const allDoctors = await contractInstance.methods.get_doctor_list().call();
+
+        for (const doctor of allDoctors) {
+            const doctorDetails = await contractInstance.methods.get_doctor(doctor).call();
+            let status = "No Request";
+
+            if (accessList.includes(doctor)) {
+                status = "Access Granted";
+            } else {
+                const pendingRequests = await contractInstance.methods.get_access_requests(doctor).call();
+                if (pendingRequests.includes(publicKey)) {
+                    status = "Request Pending";
                 }
-            } catch (error) {
-                console.error("Error loading access list:", error);
             }
+
+            const row = `<tr>
+                <td>${doctorDetails[0]}</td>
+                <td>${doctor}</td>
+                <td>${status}</td>
+            </tr>`;
+            accessTable.innerHTML += row;
         }
+    } catch (error) {
+        console.error("Error loading access list:", error);
+    }
+}
+
 
         async function requestAccess() {
             const doctorAddress = document.getElementById("doctorSelect").value;
@@ -256,22 +275,35 @@
                 alert("Please select a doctor.");
                 return;
             }
+
             const accounts = await web3.eth.getAccounts();
             const publicKey = accounts[0];
+
             try {
+                // Check if there's already access to this doctor
                 const accessList = await contractInstance.methods.get_accessed_doctorlist_for_patient(publicKey).call();
                 if (accessList.includes(doctorAddress)) {
-                    alert("You already have access to this doctor.");
+                    alert("Access already granted by this doctor.");
                     return;
                 }
-                await contractInstance.methods.request_access(doctorAddress).send({ from: accounts[0] });
-                alert("Request sent!");
-                await loadAccessList();
+
+                // Check if there's already a pending request
+                const pendingRequests = await contractInstance.methods.get_access_requests(doctorAddress).call();
+                if (pendingRequests.includes(publicKey)) {
+                    alert("Request already sent to this doctor. Awaiting approval.");
+                    return;
+                }
+
+                // Send the access request
+                await contractInstance.methods.request_access(doctorAddress).send({ from: publicKey });
+                alert("Request sent successfully!");
+                await loadAccessList(); // Reload the access list
             } catch (error) {
                 console.error("Error requesting access:", error);
                 alert("Failed to request access.");
             }
         }
+
     </script>
 </body>
 

@@ -104,164 +104,170 @@
         }
 
         async function loadPatientLogs() {
-            try {
-                const accounts = await web3.eth.getAccounts();
-                const publicKey = accounts[0];
-                const logTable = document.getElementById("logTable").getElementsByTagName("tbody")[0];
-                logTable.innerHTML = ""; // Clear existing logs
+    try {
+        const accounts = await web3.eth.getAccounts();
+        const publicKey = accounts[0];
+        const logTable = document.getElementById("logTable").getElementsByTagName("tbody")[0];
+        logTable.innerHTML = ""; // Clear existing logs
 
-                const logs = [];
+        const logs = [];
 
-                // Fetch Medical Record Added logs
-                const addedLogs = await contractInstance.getPastEvents("MedicalRecordAdded", {
-                    filter: { patient: publicKey },
-                    fromBlock: 0,
-                    toBlock: "latest",
-                });
+        // Fetch Medical Record Added logs
+        const addedLogs = await contractInstance.getPastEvents("MedicalRecordAdded", {
+            filter: { patient: publicKey },
+            fromBlock: 0,
+            toBlock: "latest",
+        });
 
-                for (const log of addedLogs) {
-                    const addedByName = await getAgentName(log.returnValues.addedBy);
-                    logs.push({
-                        eventType: "Record Created",
-                        description: `Medical record created by ${addedByName}.`,
-                        timestamp: Number(log.returnValues.timestamp) * 1000,
-                        action: "Record Created",
-                    });
-                }
-
-                // Fetch Medical Record Edited logs
-                const editedLogs = await contractInstance.getPastEvents("MedicalRecordEdited", {
-                    filter: { patient: publicKey },
-                    fromBlock: 0,
-                    toBlock: "latest",
-                });
-
-                for (const log of editedLogs) {
-                    const editedByName = await getAgentName(log.returnValues.editedBy);
-                    logs.push({
-                        eventType: "Record Edited",
-                        description: `Medical record edited by ${editedByName}.`,
-                        timestamp: Number(log.returnValues.timestamp) * 1000,
-                        action: "Record Edited",
-                    });
-                }
-
-                // Fetch Login logs
-                const loginLogs = await contractInstance.getPastEvents("PatientLoggedIn", {
-                    filter: { patient: publicKey },
-                    fromBlock: 0,
-                    toBlock: "latest",
-                });
-
-                for (const log of loginLogs) {
-                    logs.push({
-                        eventType: "Login",
-                        description: "Patient logged in.",
-                        timestamp: Number(log.returnValues.timestamp) * 1000,
-                        action: "Logged In",
-                    });
-                }
-
-                // Fetch Access Requested logs
-                const requestLogs = await contractInstance.getPastEvents("AccessRequested", {
-                    filter: { patient: publicKey },
-                    fromBlock: 0,
-                    toBlock: "latest",
-                });
-
-                for (const log of requestLogs) {
-                    const doctorName = await getAgentName(log.returnValues.doctor);
-                    logs.push({
-                        eventType: "Access Requested",
-                        description: `Access request sent to ${doctorName} (${log.returnValues.doctor}).`,
-                        timestamp: Number(log.returnValues.timestamp) * 1000,
-                        action: "Request Sent",
-                    });
-                }
-
-                // Fetch Access Granted logs
-                const grantedLogs = await contractInstance.getPastEvents("AccessGranted", {
-                    filter: { patient: publicKey },
-                    fromBlock: 0,
-                    toBlock: "latest",
-                });
-
-                for (const log of grantedLogs) {
-                    const doctorName = await getAgentName(log.returnValues.doctor);
-                    logs.push({
-                        eventType: "Access Granted",
-                        description: `Access granted by ${doctorName} (${log.returnValues.doctor}).`,
-                        timestamp: Number(log.returnValues.timestamp) * 1000,
-                        action: "Granted",
-                    });
-                }
-
-                // Fetch Access Rejected logs
-                const rejectedLogs = await contractInstance.getPastEvents("AccessRejected", {
-                    filter: { patient: publicKey },
-                    fromBlock: 0,
-                    toBlock: "latest",
-                });
-
-                for (const log of rejectedLogs) {
-                    const doctorName = await getAgentName(log.returnValues.doctor);
-                    logs.push({
-                        eventType: "Access Rejected",
-                        description: `Access request rejected by ${doctorName} (${log.returnValues.doctor}).`,
-                        timestamp: Number(log.returnValues.timestamp) * 1000,
-                        action: "Rejected",
-                    });
-                }
-
-                // Fetch Logout logs
-                const logoutLogs = await contractInstance.getPastEvents("PatientLoggedOut", {
-                    filter: { patient: publicKey },
-                    fromBlock: 0,
-                    toBlock: "latest",
-                });
-
-                for (const log of logoutLogs) {
-                    logs.push({
-                        eventType: "Logout",
-                        description: "Patient logged out.",
-                        timestamp: Number(log.returnValues.timestamp) * 1000,
-                        action: "Logged Out",
-                    });
-                }
-
-                // Sort logs by timestamp (descending)
-                logs.sort((a, b) => b.timestamp - a.timestamp);
-
-                // Assign Log ID starting from 1 at the bottom
-                logs.reverse().forEach((log, index) => {
-                    log.logId = index + 1; // Assign incrementing Log ID
-                });
-
-                // Reverse back to descending order
-                logs.reverse();
-
-                // Populate table
-                logs.forEach((log, index) => {
-                    const row = logTable.insertRow();
-                    row.innerHTML = `
-                        <td>${log.logId}</td>
-                        <td>${log.eventType}</td>
-                        <td>${log.description}</td>
-                        <td>${new Date(log.timestamp).toLocaleString()}</td>
-                        <td>${log.action}</td>
-                    `;
-                });
-
-                if (logs.length === 0) {
-                    const row = logTable.insertRow();
-                    row.innerHTML = `<td colspan="5" class="text-center">No logs available.</td>`;
-                }
-            } catch (error) {
-                console.error("Error loading logs:", error);
-            }
+        for (const log of addedLogs) {
+            const addedByName = await getAgentName(log.returnValues.addedBy);
+            const diagnosis = log.returnValues.diagnosis || "Unknown Diagnosis"; // Use diagnosis from event
+            logs.push({
+                eventType: "Record Created",
+                description: `Medical record '${diagnosis}' created by ${addedByName}.`,
+                timestamp: Number(BigInt(log.returnValues.timestamp)), // Convert BigInt to Number
+                action: "Record Created",
+            });
         }
 
-        initializePage(); // Initialize the page
+        // Fetch Medical Record Edited logs
+        const editedLogs = await contractInstance.getPastEvents("MedicalRecordEdited", {
+            filter: { patient: publicKey },
+            fromBlock: 0,
+            toBlock: "latest",
+        });
+
+        for (const log of editedLogs) {
+            const editedByName = await getAgentName(log.returnValues.editedBy);
+            const recordIndex = log.returnValues.index; // Index of the edited record
+            const medicalRecords = await contractInstance.methods.getMedicalRecords(publicKey).call();
+            const diagnosisName = medicalRecords[0][recordIndex] || "Unknown Diagnosis"; // Diagnosis titles are the first array
+
+            logs.push({
+                eventType: "Record Edited",
+                description: `Medical record '${diagnosisName}' edited by ${editedByName}.`,
+                timestamp: Number(BigInt(log.returnValues.timestamp)), // Convert BigInt to Number
+                action: "Record Edited",
+            });
+        }
+
+        // Fetch Login logs
+        const loginLogs = await contractInstance.getPastEvents("PatientLoggedIn", {
+            filter: { patient: publicKey },
+            fromBlock: 0,
+            toBlock: "latest",
+        });
+
+        for (const log of loginLogs) {
+            logs.push({
+                eventType: "Login",
+                description: "Patient logged in.",
+                timestamp: Number(BigInt(log.returnValues.timestamp)), // Convert BigInt to Number
+                action: "Logged In",
+            });
+        }
+
+        // Fetch Access Requested logs
+        const requestLogs = await contractInstance.getPastEvents("AccessRequested", {
+            filter: { patient: publicKey },
+            fromBlock: 0,
+            toBlock: "latest",
+        });
+
+        for (const log of requestLogs) {
+            const doctorName = await getAgentName(log.returnValues.doctor);
+            logs.push({
+                eventType: "Access Requested",
+                description: `Access request sent to ${doctorName}.`,
+                timestamp: Number(BigInt(log.returnValues.timestamp)), // Convert BigInt to Number
+                action: "Request Sent",
+            });
+        }
+
+        // Fetch Access Granted logs
+        const grantedLogs = await contractInstance.getPastEvents("AccessGranted", {
+            filter: { patient: publicKey },
+            fromBlock: 0,
+            toBlock: "latest",
+        });
+
+        for (const log of grantedLogs) {
+            const doctorName = await getAgentName(log.returnValues.doctor);
+            logs.push({
+                eventType: "Access Granted",
+                description: `Access granted by ${doctorName}.`,
+                timestamp: Number(BigInt(log.returnValues.timestamp)), // Convert BigInt to Number
+                action: "Granted",
+            });
+        }
+
+        // Fetch Access Rejected logs
+        const rejectedLogs = await contractInstance.getPastEvents("AccessRejected", {
+            filter: { patient: publicKey },
+            fromBlock: 0,
+            toBlock: "latest",
+        });
+
+        for (const log of rejectedLogs) {
+            const doctorName = await getAgentName(log.returnValues.doctor);
+            logs.push({
+                eventType: "Access Rejected",
+                description: `Access request rejected by ${doctorName}.`,
+                timestamp: Number(BigInt(log.returnValues.timestamp)), // Convert BigInt to Number
+                action: "Rejected",
+            });
+        }
+
+        // Fetch Logout logs
+        const logoutLogs = await contractInstance.getPastEvents("PatientLoggedOut", {
+            filter: { patient: publicKey },
+            fromBlock: 0,
+            toBlock: "latest",
+        });
+
+        for (const log of logoutLogs) {
+            logs.push({
+                eventType: "Logout",
+                description: "Patient logged out.",
+                timestamp: Number(BigInt(log.returnValues.timestamp)), // Convert BigInt to Number
+                action: "Logged Out",
+            });
+        }
+
+        // Sort logs by timestamp (descending)
+        logs.sort((a, b) => b.timestamp - a.timestamp);
+
+        // Assign Log ID starting from 1 at the bottom
+        logs.reverse().forEach((log, index) => {
+            log.logId = index + 1; // Assign incrementing Log ID
+        });
+
+        // Reverse back to descending order
+        logs.reverse();
+
+        // Populate table
+        logs.forEach((log) => {
+            const row = logTable.insertRow();
+            row.innerHTML = `
+                <td>${log.logId}</td>
+                <td>${log.eventType}</td>
+                <td>${log.description}</td>
+                <td>${new Date(log.timestamp).toLocaleString()}</td>
+                <td>${log.action}</td>
+            `;
+        });
+
+        if (logs.length === 0) {
+            const row = logTable.insertRow();
+            row.innerHTML = `<td colspan="5" class="text-center">No logs available.</td>`;
+        }
+    } catch (error) {
+        console.error("Error loading logs:", error);
+    }
+}
+
+initializePage(); // Initialize the page on load
+
     </script>
 </body>
 
