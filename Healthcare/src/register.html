@@ -198,6 +198,22 @@
             }
         }
 
+        async function isUsernameTaken(username) {
+            try {
+                const isTaken = await contractInstance.methods.isUsernameAlreadyTaken(username).call();
+                return isTaken;
+            } catch (error) {
+                console.error("Error checking username:", error);
+                alert("Error validating username. Please try again.");
+                return true; // Assume taken in case of error
+            }
+        }
+
+        function validatePassword(password) {
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
+            return passwordRegex.test(password);
+        }
+
         async function register() {
             const canRegister = await checkRegistrationStatus();
             if (!canRegister) return;
@@ -210,33 +226,46 @@
                 const designation = document.getElementById("designation").value;
 
                 if (!name || !username || !password || isNaN(age) || designation === "") {
-                    alert("All fields are required to be filled.");
-                    return;
-                }
-
-                if (age < 10 || age > 99) {
-                    alert("Please input an age which makes sense. TQ");
-                    return;
-                }
-
-                if (designation === "1" && !name.includes("(")) {
-                    alert("Doctor name must include department in brackets (e.g., Doc (ENT)).");
-                    return;
-                }
-
-                const accounts = await web3.eth.getAccounts();
-                const publicKey = accounts[0];
-
-                await contractInstance.methods.registerUser(username, password).send({ from: publicKey });
-                await contractInstance.methods.add_agent_request(name, age, parseInt(designation)).send({ from: publicKey });
-
-                alert("Registration and credentials setup successful!");
-                location.href = "./index.html";
-            } catch (error) {
-                console.error("Error during registration:", error);
-                alert("Registration failed. Please try again.");
+                alert("All fields are required to be filled.");
+                return;
             }
+
+            if (age < 10 || age > 99) {
+                alert("Please input an age which makes sense. TQ");
+                return;
+            }
+
+            if (designation === "1" && !name.includes("(")) {
+                alert("Doctor name must include department in brackets (e.g., Doc (ENT)).");
+                return;
+            }
+
+            const usernameTaken = await isUsernameTaken(username);
+            if (usernameTaken) {
+                alert("Username is already taken. Please choose a different username.");
+                return;
+            }
+
+            if (!validatePassword(password)) {
+                alert(
+                    "Password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, one digit, and one special character."
+                );
+                return;
+            }
+
+            const accounts = await web3.eth.getAccounts();
+            const publicKey = accounts[0];
+
+            await contractInstance.methods.registerUser(username, password).send({ from: publicKey });
+            await contractInstance.methods.add_agent_request(name, age, parseInt(designation)).send({ from: publicKey });
+
+            alert("Registration and credentials setup successful!");
+            location.href = "./index.html";
+        } catch (error) {
+            console.error("Error during registration:", error);
+            alert("Registration failed. Please try again.");
         }
+    }
     </script>
 </body>
 

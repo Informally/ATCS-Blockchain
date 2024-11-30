@@ -188,9 +188,9 @@
                     const timestamp = BigInt(log.returnValues.timestamp);
                     logs.push({
                         eventType: "Login",
-                        description: "Admin authenticated successfully.",
+                        description: "Admin Logged In successfully.",
                         timestamp: Number(timestamp) * 1000,
-                        action: "Authenticated",
+                        action: "Logged In",
                     });
                 }
     
@@ -211,34 +211,73 @@
                     });
                 }
     
-                // Fetch Admin Approve/Reject Logs
-                const registrationLogs = await contractInstance.getPastEvents("RegistrationApproved", {
-                    filter: { admin: adminAddress },
+                // Fetch User Approval Logs
+                const approvalLogs = await contractInstance.getPastEvents("RegistrationApproved", {
                     fromBlock: 0,
                     toBlock: "latest",
                 });
-    
-                for (const log of registrationLogs) {
+
+                for (const log of approvalLogs) {
                     const { user, designation, timestamp } = log.returnValues;
+
+                    // Fetch the user's name using the getAgentName method
+                    const userName = await contractInstance.methods.getAgentName(user).call();
+
+                    // Determine the role dynamically by checking which details exist for the user
+                    let role = "Unknown";
+                    try {
+                        const patientData = await contractInstance.methods.get_patient(user).call();
+                        if (patientData[0] !== "") role = "Patient";
+                    } catch (e) {
+                        // If fetching patient details fails, proceed to check for doctor
+                    }
+
+                    try {
+                        const doctorData = await contractInstance.methods.get_doctor(user).call();
+                        if (doctorData[0] !== "") role = "Doctor";
+                    } catch (e) {
+                        // If fetching doctor details fails, role remains as "Unknown"
+                    }
+
                     logs.push({
                         eventType: "Approval",
-                        description: `Admin approved registration for ${designation === "0" ? "Patient" : "Doctor"} with address ${user}.`,
+                        description: `Approved ${role} registration for ${userName} : (${user}).`,
                         timestamp: Number(BigInt(timestamp)) * 1000,
                         action: "Approved",
                     });
                 }
-    
-                const rejectedLogs = await contractInstance.getPastEvents("RegistrationRejected", {
-                    filter: { admin: adminAddress },
+
+                // Fetch User Rejection Logs
+                const rejectionLogs = await contractInstance.getPastEvents("RegistrationRejected", {
                     fromBlock: 0,
                     toBlock: "latest",
                 });
-    
-                for (const log of rejectedLogs) {
+
+                for (const log of rejectionLogs) {
                     const { user, designation, timestamp } = log.returnValues;
+
+                    // Fetch the user's name using the getAgentName method
+                    const userName = await contractInstance.methods.getAgentName(user).call();
+
+                    // Determine the role dynamically by checking which details exist for the user
+                    let role = "Unknown";
+                    try {
+                        const patientData = await contractInstance.methods.get_patient(user).call();
+                        if (patientData[0] !== "") role = "Patient";
+                    } catch (e) {
+                        // If fetching patient details fails, proceed to check for doctor
+                    }
+
+                    try {
+                        const doctorData = await contractInstance.methods.get_doctor(user).call();
+                        if (doctorData[0] !== "") role = "Doctor";
+                    } catch (e) {
+                        // If fetching doctor details fails, role remains as "Unknown"
+                    }
+
                     logs.push({
                         eventType: "Rejection",
-                        description: `Admin rejected registration for ${designation === "0" ? "Patient" : "Doctor"} with address ${user}.`,
+                        description: `Rejected ${role} registration for ${userName} : (${user}).`,
                         timestamp: Number(BigInt(timestamp)) * 1000,
                         action: "Rejected",
                     });
