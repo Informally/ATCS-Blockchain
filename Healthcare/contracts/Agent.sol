@@ -116,7 +116,10 @@ contract Agent {
         return true;
     }
 
-    
+    function isUsernameAlreadyTaken(string memory username) public view returns (bool) {
+    return isUsernameTaken[username];
+    }
+
     // Admin authentication with username and password
     function authenticateAdmin(string memory username, string memory password) public payable {
         require(msg.sender == adminAddress, "Caller is not the admin");
