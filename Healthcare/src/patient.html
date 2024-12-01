@@ -186,35 +186,35 @@
     <script src="js/utils.js"></script> <!-- Include utils.js -->
 
     <script>
-async function initializePage() {
-        try {
-            console.log("Validating session...");
-            await validateLogin(); // Ensure session exists before initializing Web3
+        async function initializePage() {
+            try {
+                console.log("Validating session...");
+                await validateLogin(); // Ensure session exists before initializing Web3
 
-            console.log("Initializing MetaMask and smart contract...");
-            await initializeWeb3(); // Only initialize Web3 if session is valid
+                console.log("Initializing MetaMask and smart contract...");
+                await initializeWeb3(); // Only initialize Web3 if session is valid
 
-            console.log("Validating role as patient...");
-            await validateRole("patient"); // Ensure the user has the "patient" role
+                console.log("Validating role as patient...");
+                await validateRole("patient"); // Ensure the user has the "patient" role
 
-            // Log the patient login only once, and only if not already logged
-            if (!sessionStorage.getItem("patientLoggedIn")) {
-                console.log("Logging patient login...");
-                await logPatientLogin(); // Log the patient's login with a gas payment
-                sessionStorage.setItem("patientLoggedIn", "true");
+                // Log the patient login only once, and only if not already logged
+                if (!sessionStorage.getItem("patientLoggedIn")) {
+                    console.log("Logging patient login...");
+                    await logPatientLogin(); // Log the patient's login with a gas payment
+                    sessionStorage.setItem("patientLoggedIn", "true");
+                }
+
+                console.log("Loading patient dashboard...");
+                attachLogout(); // Attach logout functionality
+                await loadPatientDetails(); // Load patient details
+                await loadDoctorList(); // Load list of doctors
+                await loadAccessList(); // Load current access list
+            } catch (error) {
+                console.error("Error initializing patient page:", error.message);
+                alert("Unauthorized access or initialization failure. Redirecting to login page...");
+                location.href = "./index.html";
             }
-
-            console.log("Loading patient dashboard...");
-            attachLogout(); // Attach logout functionality
-            await loadPatientDetails(); // Load patient details
-            await loadDoctorList(); // Load list of doctors
-            await loadAccessList(); // Load current access list
-        } catch (error) {
-            console.error("Error initializing patient page:", error.message);
-            alert("Unauthorized access or initialization failure. Redirecting to login page...");
-            location.href = "./index.html";
         }
-    }
 
         async function loadPatientDetails() {
             const accounts = await web3.eth.getAccounts();
