@@ -3,15 +3,12 @@
 
 <head>
     <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="">
-    <meta name="author" content="">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Doctor Logs</title>
 
     <!-- Bootstrap Core CSS -->
     <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
 
     <!-- Custom CSS -->
@@ -19,44 +16,120 @@
         body {
             background-color: #121212;
             color: #ffffff;
+            font-family: 'Poppins', sans-serif;
         }
 
-        .table-container {
+        .navbar {
+            background-color: rgba(0, 0, 0, 0.8);
+            border: none;
+        }
+
+        .navbar-brand {
+            font-size: 1.5rem;
+            color: #ffffff !important;
+            font-weight: 600;
+        }
+
+        .navbar-nav li a {
+            color: #ffffff !important;
+            font-size: 1.3rem;
+            transition: color 0.3s;
+        }
+
+        .navbar-nav li a:hover {
+            color: #ffd700 !important;
+        }
+
+        h2 {
             margin-top: 20px;
-            overflow-x: auto;
+            font-size: 2rem;
+            text-align: center;
+            font-weight: 600;
+            text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.8);
         }
 
         .table {
+            width: 100%;
             background-color: #1c1c1c;
             color: #ffffff;
-            border: 1px solid #333;
-            width: 100%;
-            text-align: left;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 1.3rem;
+            text-align: center;
         }
 
         .table th,
         .table td {
             padding: 12px;
             border: 1px solid #333;
+            text-align: center; /* Ensure headers and data are centered */
+            vertical-align: middle;
         }
 
         .table th {
-            background-color: #2c2c2c;
+            background-color: #282828;
             color: #2979ff;
+            font-weight: 600;
         }
 
         .table-hover tbody tr:hover {
             background-color: #2a2a2a;
         }
 
-        .panel-heading {
-            text-align: center;
-            font-size: 1.8rem;
-            background-color: #282828;
-            color: #ffffff;
-            padding: 15px;
-            border-top-left-radius: 8px;
-            border-top-right-radius: 8px;
+        .btn-primary {
+            background-color: #2979ff;
+            border: none;
+            font-size: 1.2rem;
+            font-weight: 600;
+            padding: 10px 20px;
+            margin: 10px 0;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.5);
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .btn-primary:hover {
+            background-color: #1e60cc;
+            transform: scale(1.05);
+        }
+
+        .btn-danger {
+            background-color: #d32f2f;
+            border: none;
+            font-size: 1.2rem;
+            font-weight: 600;
+            padding: 10px 20px;
+            margin: 10px 0;
+            transition: background-color 0.3s, transform 0.2s;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .btn-danger:hover {
+            background-color: #b71c1c;
+            transform: scale(1.05);
+        }
+
+        .btn-navigation {
+            margin: 10px;
+            background-color: #2979ff;
+            border: none;
+            color: white;
+            padding: 10px 30px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: 600;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.5);
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .btn-navigation:hover {
+            background-color: #1e60cc;
+            transform: scale(1.05);
+        }
+
+        h2 {
+            font-size: 2rem;
+            margin-top: 20px;
+            font-weight: 600;
         }
     </style>
 </head>

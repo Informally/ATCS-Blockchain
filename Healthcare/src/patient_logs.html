@@ -12,6 +12,7 @@
 
     <!-- Bootstrap Core CSS -->
     <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
 
     <!-- Custom CSS -->
@@ -19,30 +20,96 @@
         body {
             background-color: #121212;
             color: #ffffff;
+            font-family: 'Poppins', sans-serif;
         }
 
-        .table-container {
+        .navbar {
+            background-color: rgba(0, 0, 0, 0.8);
+            border: none;
+        }
+
+        .navbar-brand {
+            font-size: 1.5rem;
+            color: #ffffff !important;
+            font-weight: 600;
+        }
+
+        .navbar-nav li a {
+            color: #ffffff !important;
+            font-size: 1.3rem;
+            transition: color 0.3s;
+        }
+
+        .navbar-nav li a:hover {
+            color: #ffd700 !important;
+        }
+
+        h2 {
             margin-top: 20px;
-            overflow-x: auto;
+            font-size: 2rem;
+            text-align: center;
+            font-weight: 600;
+            text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.8);
         }
 
         .table {
+            width: 100%;
             background-color: #1c1c1c;
             color: #ffffff;
-            border: 1px solid #333;
-            width: 100%;
-            text-align: left;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 1.3rem;
+            text-align: center;
         }
 
         .table th,
         .table td {
             padding: 12px;
             border: 1px solid #333;
+            text-align: center; /* Ensure headers and data are centered */
+            vertical-align: middle;
         }
 
         .table th {
-            background-color: #2c2c2c;
+            background-color: #282828;
             color: #2979ff;
+            font-weight: 600;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: #2a2a2a;
+        }
+
+        .btn-primary {
+            background-color: #2979ff;
+            border: none;
+            font-size: 1.2rem;
+            font-weight: 600;
+            padding: 10px 20px;
+            margin: 10px 0;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.5);
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .btn-primary:hover {
+            background-color: #1e60cc;
+            transform: scale(1.05);
+        }
+
+        .btn-danger {
+            background-color: #d32f2f;
+            border: none;
+            font-size: 1.2rem;
+            font-weight: 600;
+            padding: 10px 20px;
+            margin: 10px 0;
+            transition: background-color 0.3s, transform 0.2s;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .btn-danger:hover {
+            background-color: #b71c1c;
+            transform: scale(1.05);
         }
     </style>
 </head>
@@ -64,9 +131,9 @@
 
     <!-- Page Content -->
     <div class="container">
-        <h2 class="text-center">Patient Activity Logs</h2>
+        <h2>Patient Activity Logs</h2>
         <div class="table-container">
-            <table class="table" id="logTable">
+            <table class="table table-hover" id="logTable">
                 <thead>
                     <tr>
                         <th>Log ID</th>

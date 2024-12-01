@@ -6,35 +6,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Patient Medical Records</title>
     <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
     <style>
         body {
             background-color: #121212;
             color: #ffffff;
+            font-family: 'Poppins', sans-serif;
         }
 
-        textarea {
-            resize: none; /* Disable resizing */
-            border: 1px solid #555; /* Add border for better visibility */
-            background-color: #333; /* Match the theme */
-            color: #fff; /* Text color */
-            border-radius: 4px; /* Rounded corners */
-            padding: 10px; /* Add padding inside */
-            width: 100%; /* Make it responsive */
-            height: 100px; /* Fixed height */
+        .navbar {
+            background-color: rgba(0, 0, 0, 0.8);
+            border: none;
+        }
+
+        .navbar-brand {
+            font-size: 1.5rem;
+            color: #ffffff !important;
+            font-weight: 600;
+        }
+
+        .navbar-nav li a {
+            color: #ffffff !important;
+            font-size: 1.3rem;
+            transition: color 0.3s;
+        }
+
+        .navbar-nav li a:hover {
+            color: #ffd700 !important;
         }
 
         .panel {
             background-color: #1c1c1c;
             border: 1px solid #333;
             border-radius: 8px;
+            margin-top: 20px;
         }
 
         .panel-heading {
             background-color: #282828;
-            border: none;
             color: #ffffff;
             text-align: center;
             font-size: 1.5rem;
+            font-weight: 600;
             padding: 10px;
             border-top-left-radius: 8px;
             border-top-right-radius: 8px;
@@ -50,39 +64,62 @@
 
         .table th,
         .table td {
-            border-top: none;
+            text-align: center;
+            vertical-align: middle;
         }
 
-        .form-group label {
-            color: #ffffff;
+        .table-hover tbody tr:hover {
+            background-color: #2a2a2a;
         }
 
         .form-control {
             background-color: #333;
             color: #ffffff;
             border: 1px solid #555;
+            border-radius: 4px;
         }
 
         .form-control:focus {
             background-color: #333;
             color: #ffffff;
             border-color: #2979ff;
-            outline: none;
-            box-shadow: none;
+            box-shadow: 0 0 5px #2979ff;
         }
 
-        .description-panel {
-            margin-top: 20px;
+        .btn-primary {
+            background-color: #2979ff;
+            border: none;
+            font-size: 1.3rem;
+            font-weight: 600;
+            padding: 10px 20px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.5);
+            transition: background-color 0.3s, transform 0.2s;
         }
 
-        .table-hover tbody tr:hover {
-            background-color: #2a2a2a;
-            color: #ffffff;
+        .btn-primary:hover {
+            background-color: #1e60cc;
+            transform: scale(1.05);
+        }
+
+        .btn-danger {
+            background-color: #d32f2f;
+            border: none;
+            font-size: 1.3rem;
+            font-weight: 600;
+            padding: 10px 20px;
+            transition: background-color 0.3s, transform 0.2s;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .btn-danger:hover {
+            background-color: #b71c1c;
+            transform: scale(1.05);
         }
     </style>
 </head>
 
 <body>
+    <!-- Navigation -->
     <nav class="navbar navbar-inverse">
         <div class="container-fluid">
             <div class="navbar-header">
@@ -96,6 +133,7 @@
         </div>
     </nav>
 
+    <!-- Page Content -->
     <div class="container">
         <!-- View Existing Records -->
         <div class="panel">
@@ -115,20 +153,23 @@
         </div>
 
         <!-- Description and Edit Section -->
-        <div class="panel description-panel" id="descriptionPanel" style="display: none;">
+        <div class="panel" id="descriptionPanel" style="display: none;">
             <div class="panel-heading" id="descriptionTitle">View/Edit Description</div>
             <div class="panel-body">
                 <form>
                     <div class="form-group">
-                        <textarea class="form-control" id="newDescription" rows="4" placeholder="Edit description"></textarea>
+                        <textarea class="form-control" id="newDescription" placeholder="Edit description" style="resize: none; height: 150px;"></textarea>
                     </div>
-                    <button type="button" class="btn btn-primary" onclick="saveEditedDescription()">Save Changes</button>
-                    <button type="button" class="btn btn-danger" onclick="closeDescriptionPanel()">Close</button>
+                    <div class="text-center">
+                        <button type="button" class="btn btn-primary" style="width: 150px; margin-right: 20px;" onclick="saveEditedDescription()">Save Changes</button>
+                        <button type="button" class="btn btn-danger" style="width: 150px;" onclick="closeDescriptionPanel()">Close</button>
+                    </div>
                 </form>
             </div>
         </div>
     </div>
 
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
     <script src="js/jquery.js"></script>
     <script src="js/bootstrap.min.js"></script>

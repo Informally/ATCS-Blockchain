@@ -14,28 +14,60 @@
     <link href="css/bootstrap.min.css" rel="stylesheet">
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
 
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
     <!-- Custom CSS -->
     <style>
-        body {
+        body,
+        html {
+            height: 100%;
+            margin: 0;
+            font-family: 'Poppins', sans-serif;
             background-color: #121212;
             color: #ffffff;
+        }
+
+        .navbar {
+            background-color: rgba(0, 0, 0, 0.8);
+            border: none;
+        }
+
+        .navbar-brand {
+            font-size: 1.8rem;
+            color: #ffffff !important;
+            font-weight: 600;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+
+        .navbar-nav li a {
+            color: #ffffff !important;
+            font-size: 1.3rem;
+            font-weight: 400;
+            transition: color 0.3s;
+        }
+
+        .navbar-nav li a:hover {
+            color: #ffd700 !important;
         }
 
         .panel {
             background-color: #1c1c1c;
             border: 1px solid #333;
-            border-radius: 8px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.8);
         }
 
         .panel-heading {
             background-color: #282828;
-            border: none;
             color: #ffffff;
             text-align: center;
             font-size: 1.5rem;
-            padding: 10px;
-            border-top-left-radius: 8px;
-            border-top-right-radius: 8px;
+            padding: 15px;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.8);
         }
 
         .panel-body {
@@ -44,56 +76,90 @@
 
         .table {
             color: #ffffff;
+            margin: 0 auto;
         }
 
         .table th,
         .table td {
-            border-top: none;
+            text-align: center;
+            border-top: 1px solid #444;
         }
 
         .table-hover tbody tr:hover {
             background-color: #2a2a2a;
-            color: #ffffff;
         }
 
         .btn-navigation {
-            margin: 10px;
-            background-color: #2979ff;
+            background-color: #2979ff; /* Primary blue color */
             border: none;
             color: white;
             padding: 10px 30px;
-            border-radius: 4px;
-            text-decoration: none;
+            border-radius: 5px;
+            font-size: 1.2rem; /* Match the size of Request Connection button */
+            font-weight: 600; /* Semi-bold for better visibility */
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.5); /* Subtle shadow */
+            transition: background-color 0.3s, transform 0.2s; /* Smooth transitions */
         }
 
         .btn-navigation:hover {
-            background-color: #1e60cc;
+            background-color: #1e60cc; /* Slightly darker shade on hover */
+            transform: scale(1.05); /* Slight enlarge effect */
+        }
+
+        .btn-navigation:active {
+            transform: scale(0.95); /* Slightly smaller when clicked */
+        }
+
+        .btn-navigation + .btn-navigation {
+            margin-left: 20px; /* Spacing between buttons */
         }
 
         .form-control {
             background-color: #1c1c1c;
             color: #ffffff;
             border: 1px solid #333;
-            border-radius: 4px;
+            border-radius: 5px;
+            padding: 10px;
+            font-size: 1.3rem;
+            font-weight: 500; /* Slightly bolder font */
+            font-family: 'Poppins', sans-serif; /* Consistent font */
+            appearance: none; /* Remove default dropdown styling */
             box-shadow: none;
-            outline: none;
         }
 
         .form-control:hover,
         .form-control:focus {
             background-color: #282828;
             border-color: #2979ff;
-            color: #ffffff;
+            box-shadow: 0px 0px 5px #2979ff;
         }
 
         .form-control option {
             background-color: #1c1c1c;
             color: #ffffff;
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.3rem;
+            padding: 10px;
         }
 
         .form-control option:hover {
-            background-color: #282828;
-            color: #ffffff;
+            background-color: #2a2a2a;
+            color: #ffd700;
+        }
+
+        .btn-primary {
+            background-color: #2979ff;
+            border: none;
+            font-size: 1.2rem;
+            font-weight: 600;
+            padding: 10px 20px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.5);
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .btn-primary:hover {
+            background-color: #1e60cc;
+            transform: scale(1.05);
         }
     </style>
 </head>
@@ -128,11 +194,11 @@
                 <table class="table">
                     <tr>
                         <th>Name:</th>
-                        <td id="name"></td>
+                        <td id="name">Loading...</td>
                     </tr>
                     <tr>
                         <th>Age:</th>
-                        <td id="age"></td>
+                        <td id="age">Loading...</td>
                     </tr>
                 </table>
             </div>
@@ -143,7 +209,7 @@
             <div class="panel-heading">Connect with Available Doctors</div>
             <div class="panel-body">
                 <div class="form-group">
-                    <label for="doctorSelect">Doctor:</label>
+                    <label for="doctorSelect">Doctor</label>
                     <select class="form-control" id="doctorSelect">
                         <option value="" selected>-- Please Select --</option>
                     </select>
@@ -172,10 +238,11 @@
         <div class="panel">
             <div class="panel-heading">Additional Functions</div>
             <div class="panel-body text-center">
-                <a href="patient_medical_records.html" class="btn-navigation">Medical Records</a>
-                <a href="patient_logs.html" class="btn-navigation" style="padding: 10px 50px;">View Logs</a>
+                <a href="patient_medical_records.html" class="btn btn-primary btn-lg" style="width: 150px; margin-right: 20px;">Medical Records</a>
+                <a href="patient_logs.html" class="btn btn-primary btn-lg" style="width: 150px;">View Logs</a>
             </div>
         </div>
+        
     </div>
 
     <!-- Scripts -->
@@ -183,7 +250,7 @@
     <script src="js/jquery.js"></script>
     <script src="js/bootstrap.min.js"></script>
     <script src="js/contractConfig.js"></script>
-    <script src="js/utils.js"></script> <!-- Include utils.js -->
+    <script src="js/utils.js"></script>
 
     <script>
         async function initializePage() {

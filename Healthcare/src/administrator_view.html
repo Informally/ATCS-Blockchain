@@ -12,6 +12,7 @@
 
     <!-- Bootstrap Core CSS -->
     <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
 
     <!-- Custom CSS -->
@@ -19,21 +20,43 @@
         body {
             background-color: #121212;
             color: #ffffff;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .navbar {
+            background-color: rgba(0, 0, 0, 0.8);
+            border: none;
+        }
+
+        .navbar-brand {
+            font-size: 1.5rem;
+            color: #ffffff !important;
+            font-weight: 600;
+        }
+
+        .navbar-nav li a {
+            color: #ffffff !important;
+            font-size: 1.3rem;
+            transition: color 0.3s;
+        }
+
+        .navbar-nav li a:hover {
+            color: #ffd700 !important;
         }
 
         .panel {
             background-color: #1c1c1c;
             border: 1px solid #333;
             border-radius: 8px;
-            margin-bottom: 20px;
+            margin-top: 20px;
         }
 
         .panel-heading {
             background-color: #282828;
-            border: none;
             color: #ffffff;
             text-align: center;
             font-size: 1.5rem;
+            font-weight: 600;
             padding: 10px;
             border-top-left-radius: 8px;
             border-top-right-radius: 8px;
@@ -51,9 +74,10 @@
 
         .table th,
         .table td {
-            border: 1px solid #333;
+            text-align: center;
+            vertical-align: middle;
             padding: 12px;
-            text-align: left;
+            border: 1px solid #333;
         }
 
         .table th {
@@ -63,12 +87,6 @@
 
         .table-hover tbody tr:hover {
             background-color: #2a2a2a;
-            color: #ffffff;
-        }
-
-        .navigation-buttons {
-            margin-top: 20px;
-            text-align: center;
         }
 
         .btn-navigation {
@@ -79,29 +97,32 @@
             padding: 10px 30px;
             border-radius: 4px;
             text-decoration: none;
+            font-weight: 600;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.5);
+            transition: background-color 0.3s, transform 0.2s;
         }
 
         .btn-navigation:hover {
             background-color: #1e60cc;
+            transform: scale(1.05);
         }
     </style>
 </head>
 
 <body>
-    
-   <!-- Navigation -->
-   <nav class="navbar navbar-inverse navbar-static-top">
-    <div class="container-fluid">
-        <div class="navbar-header">
-            <a class="navbar-brand" href="administrator.html">Admin Dashboard</a>
+    <!-- Navigation -->
+    <nav class="navbar navbar-inverse">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <a class="navbar-brand" href="administrator.html">Admin Dashboard</a>
+            </div>
+            <ul class="nav navbar-nav navbar-right">
+                <li><a href="administrator.html">Dashboard</a></li>
+                <li><a href="administrator_logs.html">Logs</a></li>
+                <li><a id="logoutButton" href="#" onclick="adminLogout()">Logout</a></li>
+            </ul>
         </div>
-        <ul class="nav navbar-nav navbar-right">
-            <li><a href="administrator.html">Dashboard</a></li>
-            <li><a href="administrator_logs.html">Logs</a></li>
-            <li><a id="logoutButton" href="#" onclick="adminLogout()">Logout</a></li>
-        </ul>
-    </div>
-</nav>
+    </nav>
 
     <!-- Main Content -->
     <div class="container">
@@ -119,7 +140,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- Registered patients rows will be inserted here -->
+                        <!-- Registered patients rows will be dynamically inserted -->
                     </tbody>
                 </table>
             </div>
@@ -139,7 +160,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- Registered doctors rows will be inserted here -->
+                        <!-- Registered doctors rows will be dynamically inserted -->
                     </tbody>
                 </table>
             </div>
@@ -147,7 +168,7 @@
     </div>
 
     <!-- Navigation Buttons -->
-    <div class="container navigation-buttons">
+    <div class="container text-center" style="margin-top: 20px;">
         <a href="administrator.html" class="btn-navigation">Admin Dashboard</a>
         <a href="administrator_logs.html" class="btn-navigation">View Admin Logs</a>
     </div>

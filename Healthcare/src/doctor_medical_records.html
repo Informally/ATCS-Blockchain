@@ -3,15 +3,12 @@
 
 <head>
     <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="">
-    <meta name="author" content="">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Doctor Medical Records</title>
 
     <!-- Bootstrap Core CSS -->
     <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
 
     <!-- Custom CSS -->
@@ -19,31 +16,43 @@
         body {
             background-color: #121212;
             color: #ffffff;
+            font-family: 'Poppins', sans-serif;
         }
 
-        textarea {
-            resize: none; /* Disable resizing */
-            border: 1px solid #555; /* Add border for better visibility */
-            background-color: #333; /* Match the theme */
-            color: #fff; /* Text color */
-            border-radius: 4px; /* Rounded corners */
-            padding: 10px; /* Add padding inside */
-            width: 100%; /* Make it responsive */
-            height: 100px; /* Fixed height */
+        .navbar {
+            background-color: rgba(0, 0, 0, 0.8);
+            border: none;
+        }
+
+        .navbar-brand {
+            font-size: 1.5rem;
+            color: #ffffff !important;
+            font-weight: 600;
+        }
+
+        .navbar-nav li a {
+            color: #ffffff !important;
+            font-size: 1.3rem;
+            transition: color 0.3s;
+        }
+
+        .navbar-nav li a:hover {
+            color: #ffd700 !important;
         }
 
         .panel {
             background-color: #1c1c1c;
             border: 1px solid #333;
             border-radius: 8px;
+            margin-top: 20px;
         }
 
         .panel-heading {
             background-color: #282828;
-            border: none;
             color: #ffffff;
             text-align: center;
             font-size: 1.5rem;
+            font-weight: 600;
             padding: 10px;
             border-top-left-radius: 8px;
             border-top-right-radius: 8px;
@@ -55,63 +64,106 @@
 
         .table {
             color: #ffffff;
+            width: 100%;
+            border-collapse: collapse;
         }
 
         .table th,
         .table td {
-            border-top: none;
+            text-align: center;
+            vertical-align: middle;
+            padding: 12px;
         }
 
-        .form-group label {
-            color: #ffffff;
+        .table th {
+            background-color: #2c2c2c;
+            color: #2979ff;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: #2a2a2a;
         }
 
         .form-control {
             background-color: #333;
             color: #ffffff;
             border: 1px solid #555;
+            border-radius: 4px;
         }
 
         .form-control:focus {
             background-color: #333;
             color: #ffffff;
             border-color: #2979ff;
-            outline: none;
-            box-shadow: none;
+            box-shadow: 0 0 5px #2979ff;
         }
 
-        .table-hover tbody tr:hover {
-            background-color: #2a2a2a;
-            color: #ffffff;
+        .btn-success,
+        .btn-danger {
+            padding: 10px 20px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        .btn-success {
+            background-color: #28a745;
+            border: none;
+        }
+
+        .btn-success:hover {
+            background-color: #218838;
+            transform: scale(1.05);
+        }
+
+        .btn-primary,
+        .btn-danger {
+            padding: 10px 20px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        .btn-primary {
+            background-color: #7358dd;
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background-color: #5d46ba;
+            transform: scale(1.05);
+        }
+
+        .btn-danger {
+            background-color: #d32f2f;
+            border: none;
+        }
+
+        .btn-danger:hover {
+            background-color: #b71c1c;
+            transform: scale(1.05);
         }
     </style>
 </head>
 
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-inverse navbar-static-top" role="navigation">
+    <nav class="navbar navbar-inverse navbar-static-top">
         <div class="container-fluid">
             <div class="navbar-header">
-                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar-collapse">
-                    <span class="sr-only">Toggle navigation</span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                </button>
-                <a class="navbar-brand" href="#">Doctor Medical Records</a>
+                <a class="navbar-brand" href="doctor.html">Doctor Dashboard</a>
             </div>
-            <div class="collapse navbar-collapse" id="navbar-collapse">
-                <ul class="nav navbar-nav navbar-right">
-                    <li><a href="doctor.html">Dashboard</a></li>
-                    <li><a href="doctor_logs.html">Logs</a></li>
-                    <li><a id="logoutButton" href="#">Logout</a></li>
-                </ul>
-            </div>
+            <ul class="nav navbar-nav navbar-right">
+                <li><a href="doctor.html">Dashboard</a></li>
+                <li><a href="doctor_logs.html">Logs</a></li>
+                <li><a id="logoutButton" href="#">Logout</a></li>
+            </ul>
         </div>
     </nav>
 
-    <!-- Page Content -->
+    <!-- Main Content -->
     <div class="container">
+        <!-- Connected Patients -->
         <div class="panel">
             <div class="panel-heading">Connected Patients</div>
             <div class="panel-body">
@@ -123,32 +175,36 @@
                             <th>Actions</th>
                         </tr>
                     </thead>
-                    <tbody id="connectedPatientsTable"></tbody>
+                    <tbody id="connectedPatientsTable">
+                        <!-- Dynamically populated -->
+                    </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- Record Management Section -->
-        <div class="panel description-section" id="recordManagementSection" style="display: none;">
-            <div class="panel-heading" id="recordManagementTitle">Manage Records</div>
+        <!-- Manage Records -->
+        <div class="panel" id="recordManagementSection" style="display: none;">
+            <div class="panel-heading">Manage Records</div>
             <div class="panel-body">
                 <div class="form-group">
-                    <label for="recordDropdown">Select Record to Edit:</label>
+                    <label for="recordDropdown">Select Record:</label>
                     <select class="form-control" id="recordDropdown" onchange="loadRecordDetails()">
-                        <option value="" selected disabled>--Please Select--</option>
+                        <option value="" selected disabled>-- Select Record --</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="recordDescription">Description:</label>
-                    <textarea class="form-control" style="background-color: #333" id="recordDescription" rows="4" placeholder="Enter or edit the record description" readonly></textarea>
+                    <textarea class="form-control" id="recordDescription" placeholder="View or edit record description" style="resize: none;"></textarea>
                 </div>
-                <button type="button" class="btn btn-success" onclick="saveRecord()">Save Record</button>
-                <button type="button" class="btn btn-danger" onclick="closeRecordManagement()">Close</button>
+                <div class="text-center">
+                    <button type="button" class="btn btn-success" onclick="saveRecord()">Save</button>
+                    <button type="button" class="btn btn-danger" onclick="closeRecordManagement()">Close</button>
+                </div>
             </div>
         </div>
 
-        <!-- Create New Record Section -->
-        <div class="panel description-section" id="createRecordSection" style="display: none;">
+        <!-- Create New Record -->
+        <div class="panel" id="createRecordSection" style="display: none;">
             <div class="panel-heading">Create New Record</div>
             <div class="panel-body">
                 <div class="form-group">
@@ -157,10 +213,12 @@
                 </div>
                 <div class="form-group">
                     <label for="newRecordDescription">Description:</label>
-                    <textarea class="form-control" id="newRecordDescription" rows="4" placeholder="Enter record description"></textarea>
+                    <textarea class="form-control" id="newRecordDescription" placeholder="Enter record description" style="resize: none;"></textarea>
                 </div>
-                <button type="button" class="btn btn-success" onclick="saveNewRecord()">Save Record</button>
-                <button type="button" class="btn btn-danger" onclick="closeCreateRecord()">Close</button>
+                <div class="text-center">
+                    <button type="button" class="btn btn-success" onclick="saveNewRecord()">Create</button>
+                    <button type="button" class="btn btn-danger" onclick="closeCreateRecord()">Close</button>
+                </div>
             </div>
         </div>
     </div>

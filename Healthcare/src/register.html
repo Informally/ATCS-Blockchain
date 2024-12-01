@@ -12,56 +12,132 @@
 
     <!-- Bootstrap Core CSS -->
     <link href="css/bootstrap.min.css" rel="stylesheet">
-    <link rel="icon" type="image/x-icon" href="favicon.ico"/>
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 
     <!-- Custom CSS -->
     <style>
         body {
             background-color: #121212;
             color: #ffffff;
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            height: 100%;
+            overflow-x: hidden;
         }
+
         .navbar {
-            background-color: #1c1c1c;
+            background-color: rgba(0, 0, 0, 0.8);
             border: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
         }
-        .navbar-brand, .navbar-nav li a {
+
+        .navbar-brand {
+            font-size: 1.8rem;
             color: #ffffff !important;
+            font-weight: 600;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
         }
+
+        .navbar-nav li a {
+            color: #ffffff !important;
+            font-size: 1.3rem;
+            font-weight: 400;
+            transition: color 0.3s;
+        }
+
+        .navbar-nav li a:hover {
+            color: #ffd700 !important;
+        }
+
         .container {
-            margin-top: 30px;
+            margin-top: 60px;
+            margin-bottom: 30px;
         }
+
         .panel {
             background-color: #1c1c1c;
             border: 1px solid #333;
-            border-radius: 8px;
-        }
-        .panel-heading {
-            background-color: #282828;
-            border: none;
-            color: #ffffff;
-            text-align: center;
-            font-size: 1.5rem;
-            padding: 10px;
-            border-top-left-radius: 8px;
-            border-top-right-radius: 8px;
-        }
-        .panel-body {
+            border-radius: 15px;
+            box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.8);
             padding: 20px;
         }
+
+        .panel-heading {
+            background-color: #282828;
+            color: #ffffff;
+            font-size: 1.8rem;
+            font-weight: 600;
+            text-align: center;
+            border-top-left-radius: 15px;
+            border-top-right-radius: 15px;
+            padding: 15px 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+
         .form-group label {
-            color: #ffffff;
+            font-size: 1.2rem;
+            font-weight: 400;
+            color: #dddddd;
         }
+
         .form-control {
-            background-color: #333;
+            background-color: #1c1c1c;
             color: #ffffff;
-            border: 1px solid #555;
-        }
-        .form-control:focus {
-            background-color: #333;
-            color: #ffffff;
-            border-color: #2979ff;
-            outline: none;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 10px;
+            font-size: 1.3rem;
+            font-weight: 500; /* Slightly bolder font */
+            font-family: 'Poppins', sans-serif; /* Consistent font */
+            appearance: none; /* Remove default dropdown styling */
             box-shadow: none;
+        }
+
+        .form-control:hover,
+        .form-control:focus {
+            background-color: #282828;
+            border-color: #2979ff;
+            box-shadow: 0px 0px 5px #2979ff;
+        }
+
+        .form-control option {
+            background-color: #1c1c1c;
+            color: #ffffff;
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.3rem;
+            padding: 10px;
+        }
+
+        .form-control option:hover {
+            background-color: #2a2a2a;
+            color: #ffd700;
+        }
+
+        .btn-primary {
+            background-color: #2979ff;
+            border: none;
+            font-size: 1.3rem;
+            font-weight: 600;
+            padding: 10px 30px;
+            margin: 10px 10px 0 10px;
+            transition: background-color 0.3s, transform 0.2s;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .btn-primary:hover {
+            background-color: #1e60cc;
+            transform: scale(1.05);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.95);
+        }
+
+        .text-center {
+            margin-top: 20px;
         }
     </style>
 </head>
@@ -92,47 +168,37 @@
     <div class="container">
         <div class="panel">
             <div class="panel-heading">
-                <h3 class="text-center">Register with ZHAN QUAN HOSPITAL</h3>
+                <h3>Register with ZHAN QUAN HOSPITAL</h3>
             </div>
             <div class="panel-body">
                 <form class="form-horizontal" name="registerForm">
                     <div class="form-group">
-                        <label class="control-label col-sm-2" for="name">Name:</label>
-                        <div class="col-sm-8">
-                            <input type="text" class="form-control" id="name" placeholder="Enter name" required>
-                        </div>
+                        <label for="name">Name:</label>
+                        <input type="text" class="form-control" id="name" placeholder="Enter your full name" required>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-2" for="age">Age:</label>
-                        <div class="col-sm-8">
-                            <input type="number" class="form-control" id="age" placeholder="Enter age" required>
-                        </div>
+                        <label for="age">Age:</label>
+                        <input type="number" class="form-control" id="age" placeholder="Enter your age" required>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-2" for="username">Username:</label>
-                        <div class="col-sm-8">
-                            <input type="text" class="form-control" id="username" placeholder="Enter username" required>
-                        </div>
+                        <label for="username">Username:</label>
+                        <input type="text" class="form-control" id="username" placeholder="Insert a username" required>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-2" for="password">Password:</label>
-                        <div class="col-sm-8">
-                            <input type="password" class="form-control" id="password" placeholder="Enter password" required>
-                        </div>
+                        <label for="password">Password:</label>
+                        <input type="password" class="form-control" id="password" placeholder="Insert a secure password" required>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-2" for="designation">Designation:</label>
-                        <div class="col-sm-8">
-                            <select class="form-control" id="designation" required>
-                                <option value="" disabled selected>-- Select --</option>
-                                <option value="0">Patient</option>
-                                <option value="1">Doctor</option>
-                            </select>
-                        </div>
+                        <label for="designation">Designation:</label>
+                        <select class="form-control" id="designation" required>
+                            <option value="" disabled selected>-- Select --</option>
+                            <option value="0">Patient</option>
+                            <option value="1">Doctor</option>
+                        </select>
                     </div>
                     <div class="text-center">
-                        <button type="button" class="btn btn-primary btn-lg" onclick="register()">Register</button>
-                        <button type="button" class="btn btn-primary btn-lg" onclick="location.href='./index.html'">Go Back</button>
+                        <button type="button" class="btn btn-primary" onclick="register()">Register</button>
+                        <button type="button" class="btn btn-primary" onclick="location.href='./index.html'">Go Back</button>
                     </div>
                 </form>
             </div>

@@ -12,6 +12,7 @@
 
     <!-- Bootstrap Core CSS -->
     <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
 
     <!-- Custom CSS -->
@@ -19,20 +20,43 @@
         body {
             background-color: #121212;
             color: #ffffff;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .navbar {
+            background-color: rgba(0, 0, 0, 0.8);
+            border: none;
+        }
+
+        .navbar-brand {
+            font-size: 1.5rem;
+            color: #ffffff !important;
+            font-weight: 600;
+        }
+
+        .navbar-nav li a {
+            color: #ffffff !important;
+            font-size: 1.3rem;
+            transition: color 0.3s;
+        }
+
+        .navbar-nav li a:hover {
+            color: #ffd700 !important;
         }
 
         .panel {
             background-color: #1c1c1c;
             border: 1px solid #333;
             border-radius: 8px;
+            margin-top: 20px;
         }
 
         .panel-heading {
             background-color: #282828;
-            border: none;
             color: #ffffff;
             text-align: center;
             font-size: 1.5rem;
+            font-weight: 600;
             padding: 10px;
             border-top-left-radius: 8px;
             border-top-right-radius: 8px;
@@ -48,45 +72,67 @@
 
         .table th,
         .table td {
-            border-top: none;
+            text-align: center;
+            vertical-align: middle;
         }
 
         .table-hover tbody tr:hover {
             background-color: #2a2a2a;
-            color: #ffffff;
         }
 
         .btn {
-            margin-right: 5px;
+            background-color: #2979ff;
+            border: none;
+            font-size: 1.2rem;
+            font-weight: 600;
+            padding: 10px 20px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.5);
+            transition: background-color 0.3s, transform 0.2s;
         }
 
-        .approve {
+        .btn.approve {
             background-color: #28a745;
             color: #fff;
         }
 
-        .reject {
+        .btn.approve:hover {
+            background-color: #218838;
+            transform: scale(1.05);
+        }
+
+        .btn.reject {
             background-color: #dc3545;
             color: #fff;
         }
 
-        .navigation-buttons {
-            margin-top: 20px;
-            text-align: center;
+        .btn.reject:hover {
+            background-color: #c82333;
+            transform: scale(1.05);
         }
 
         .btn-navigation {
-            margin: 10px;
-            background-color: #2979ff;
+            background-color: #2979ff; /* Primary blue color */
             border: none;
             color: white;
             padding: 10px 30px;
-            border-radius: 4px;
-            text-decoration: none;
+            border-radius: 5px;
+            font-size: 1.3rem; /* Match the size of Request Connection button */
+            font-weight: 600; /* Semi-bold for better visibility */
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.5); /* Subtle shadow */
+            transition: background-color 0.3s, transform 0.2s; /* Smooth transitions */
         }
 
         .btn-navigation:hover {
-            background-color: #1e60cc;
+            background-color: #1e60cc; /* Slightly darker shade on hover */
+            transform: scale(1.05); /* Slight enlarge effect */
+        }
+
+        .btn-navigation:active {
+            transform: scale(0.95); /* Slightly smaller when clicked */
+        }
+
+        .btn-navigation + .btn-navigation {
+            margin-left: 20px; /* Spacing between buttons */
         }
     </style>
 </head>
@@ -94,7 +140,7 @@
 <body>
 
     <!-- Navigation -->
-    <nav class="navbar navbar-inverse navbar-static-top">
+    <nav class="navbar navbar-inverse">
         <div class="container-fluid">
             <div class="navbar-header">
                 <a class="navbar-brand" href="#">Admin Dashboard</a>
@@ -118,6 +164,7 @@
                             <th>Age</th>
                             <th>Role</th>
                             <th>Address</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -138,6 +185,7 @@
                             <th>Age</th>
                             <th>Role</th>
                             <th>Address</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -149,7 +197,7 @@
     </div>
 
     <!-- Navigation Buttons -->
-    <div class="container navigation-buttons">
+    <div class="container text-center" style="margin-top: 20px;">
         <a href="administrator_view.html" class="btn-navigation">View Registered Users</a>
         <a href="administrator_logs.html" class="btn-navigation">View Admin Logs</a>
     </div>
