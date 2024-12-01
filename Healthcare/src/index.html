@@ -134,56 +134,71 @@
                 web3 = new Web3(window.ethereum);
                 await window.ethereum.request({ method: "eth_requestAccounts" });
                 contractInstance = new web3.eth.Contract(contractABI, contractAddress);
+                console.log("MetaMask connected and contract instance initialized.");
             } catch (error) {
                 console.error("Error initializing Web3:", error);
-                alert("Failed to connect to MetaMask.");
+                alert("Failed to connect to MetaMask. Ensure MetaMask is installed and unlocked.");
             }
         }
     
         window.onload = initializeWeb3;
     
-        // Handle Login
+        // Handle User Login
         async function handleLogin(event) {
             event.preventDefault();
     
-            const username = document.getElementById("username").value;
-            const password = document.getElementById("password").value;
+            const username = document.getElementById("username").value.trim();
+            const password = document.getElementById("password").value.trim();
     
             if (!web3) {
-                alert("Please install MetaMask to use this application.");
+                alert("MetaMask is not connected. Please install and connect it.");
                 return;
             }
+    
+            // Show loading indicator
+            const loginButton = document.querySelector("button[type='submit']");
+            loginButton.disabled = true;
+            loginButton.textContent = "Logging in...";
     
             try {
                 const accounts = await web3.eth.getAccounts();
                 const publicKey = accounts[0];
     
-                // Authenticate username and password via smart contract
-                const isAuthenticated = await contractInstance.methods.authenticate(username, password).call({ from: publicKey });
+                console.log("Attempting to authenticate user with address:", publicKey);
+    
+                // Attempt authentication
+                const isAuthenticated = await contractInstance.methods
+                    .authenticate(username, password)
+                    .call({ from: publicKey });
     
                 if (isAuthenticated) {
                     console.log("Authentication successful");
     
-                    // Determine role and store session details
+                    // Check user roles
                     const isAdmin = await contractInstance.methods.checkAdmin(publicKey).call();
-                    const isDoctor = await contractInstance.methods.get_doctor(publicKey).call();
-                    const isPatient = await contractInstance.methods.get_patient(publicKey).call();
+                    const doctorInfo = await contractInstance.methods.get_doctor(publicKey).call();
+                    const patientInfo = await contractInstance.methods.get_patient(publicKey).call();
+                    const isPatientPending = await contractInstance.methods.isPendingPatientApproval(publicKey).call();
+                    const isDoctorPending = await contractInstance.methods.isPendingDoctorApproval(publicKey).call();
     
+                    // Handle role-based navigation
                     if (isAdmin) {
                         localStorage.setItem("sessionToken", "valid");
                         localStorage.setItem("userRole", "admin");
                         localStorage.setItem("loggedInAddress", publicKey);
                         location.href = "./administrator.html";
-                    } else if (isDoctor[0]) { // Doctor exists
+                    } else if (doctorInfo[0]) {
                         localStorage.setItem("sessionToken", "valid");
                         localStorage.setItem("userRole", "doctor");
                         localStorage.setItem("loggedInAddress", publicKey);
                         location.href = "./doctor.html";
-                    } else if (isPatient[0]) { // Patient exists
+                    } else if (patientInfo[0]) {
                         localStorage.setItem("sessionToken", "valid");
                         localStorage.setItem("userRole", "patient");
                         localStorage.setItem("loggedInAddress", publicKey);
                         location.href = "./patient.html";
+                    } else if (isPatientPending || isDoctorPending) {
+                        alert("Your registration request is pending approval. Please wait for admin approval.");
                     } else {
                         alert("Unrecognized user or your registration may still be pending.");
                     }
@@ -192,10 +207,23 @@
                 }
             } catch (error) {
                 console.error("Error during login:", error);
-                alert("Login failed. Please try again.");
+    
+                // Enhanced error handling
+                if (error.message.includes("revert")) {
+                    alert("Authentication failed: Invalid username or password.");
+                } else if (error.message.includes("Internal JSON-RPC error")) {
+                    alert("Incorrect Credentials. Please try again.");
+                } else {
+                    alert("An unexpected error occurred. Please check the console for details.");
+                }
+            } finally {
+                // Reset loading indicator
+                loginButton.disabled = false;
+                loginButton.textContent = "Login";
             }
         }
     </script>
+    
 </body>
 
 </html>

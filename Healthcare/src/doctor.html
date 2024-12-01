@@ -204,7 +204,7 @@
     <script src="js/utils.js"></script>
 
     <script>
-        async function initializePage() {
+async function initializePage() {
         try {
             console.log("Validating session...");
             await validateLogin(); // Ensure session exists before initializing Web3
@@ -215,9 +215,16 @@
             console.log("Validating role as doctor...");
             await validateRole("doctor"); // Ensure the user has the "doctor" role
 
-            // Trigger the `log_doctor_login` function to ensure a gas payment is made
-            await logDoctorLogin();
-            
+            // Log the doctor's login (only if not already logged in this session)
+            const hasLoggedIn = localStorage.getItem("doctorLoggedIn");
+            if (!hasLoggedIn) {
+                await logDoctorLogin(); // Gas payment made here
+                localStorage.setItem("doctorLoggedIn", "true"); // Mark as logged
+                console.log("Doctor login logged and marked for session.");
+            } else {
+                console.log("Doctor login already logged in this session.");
+            }
+
             console.log("Loading doctor dashboard...");
             await loadDoctorDetails();
             await loadAccessRequests();

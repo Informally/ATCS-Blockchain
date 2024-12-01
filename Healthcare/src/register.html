@@ -147,14 +147,14 @@
     <script>
         let web3;
         let contractInstance;
-
+    
         async function initializeWeb3() {
             if (window.ethereum) {
                 web3 = new Web3(window.ethereum);
                 try {
                     await window.ethereum.request({ method: "eth_requestAccounts" });
                     console.log("MetaMask connected");
-
+    
                     contractInstance = new web3.eth.Contract(contractABI, contractAddress);
                     console.log("Contract instance initialized");
                 } catch (error) {
@@ -164,32 +164,40 @@
                 alert("Please install MetaMask to use this application.");
             }
         }
-
+    
         window.onload = initializeWeb3;
-
+    
         async function checkRegistrationStatus() {
             try {
                 const accounts = await web3.eth.getAccounts();
                 const publicKey = accounts[0];
-
+    
+                // Check if the user is the admin
+                const isAdmin = await contractInstance.methods.checkAdmin(publicKey).call();
+                if (isAdmin) {
+                    alert("Admin accounts cannot register as patients or doctors.");
+                    location.href = "./index.html";
+                    return false;
+                }
+    
                 const patient = await contractInstance.methods.get_patient(publicKey).call();
                 const doctor = await contractInstance.methods.get_doctor(publicKey).call();
-
+    
                 if (patient[0] || doctor[0]) {
                     alert("You are already registered. Please log in.");
                     location.href = "./index.html";
                     return false;
                 }
-
+    
                 const isPatientPending = await contractInstance.methods.isPendingPatientApproval(publicKey).call();
                 const isDoctorPending = await contractInstance.methods.isPendingDoctorApproval(publicKey).call();
-
+    
                 if (isPatientPending || isDoctorPending) {
                     alert("Your registration request is already pending. Please wait for approval.");
                     location.href = "./index.html";
                     return false;
                 }
-
+    
                 return true;
             } catch (error) {
                 console.error("Error checking registration status:", error);
@@ -197,7 +205,7 @@
                 return false;
             }
         }
-
+    
         async function isUsernameTaken(username) {
             try {
                 const isTaken = await contractInstance.methods.isUsernameAlreadyTaken(username).call();
@@ -208,65 +216,74 @@
                 return true; // Assume taken in case of error
             }
         }
-
+    
         function validatePassword(password) {
             const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
             return passwordRegex.test(password);
         }
-
+    
         async function register() {
             const canRegister = await checkRegistrationStatus();
             if (!canRegister) return;
-
+    
             try {
                 const name = document.getElementById("name").value.trim();
                 const age = parseInt(document.getElementById("age").value);
                 const username = document.getElementById("username").value.trim();
                 const password = document.getElementById("password").value.trim();
                 const designation = document.getElementById("designation").value;
-
+    
                 if (!name || !username || !password || isNaN(age) || designation === "") {
-                alert("All fields are required to be filled.");
-                return;
+                    alert("All fields are required to be filled.");
+                    return;
+                }
+    
+                if (age < 10 || age > 99) {
+                    alert("Please input an age which makes sense.");
+                    return;
+                }
+    
+                if (designation === "1" && !name.includes("(")) {
+                    alert("Doctor name must include department in brackets (e.g., Doc (ENT)).");
+                    return;
+                }
+    
+                const usernameTaken = await isUsernameTaken(username);
+                if (usernameTaken) {
+                    alert("Username is already taken. Please choose a different username.");
+                    return;
+                }
+    
+                if (!validatePassword(password)) {
+                    alert(
+                        "Password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, one digit, and one special character."
+                    );
+                    return;
+                }
+    
+                const accounts = await web3.eth.getAccounts();
+                const publicKey = accounts[0];
+    
+                // Register user credentials
+                await contractInstance.methods.registerUser(username, password).send({ from: publicKey });
+    
+                // Submit agent registration request
+                await contractInstance.methods.add_agent_request(name, age, parseInt(designation)).send({ from: publicKey });
+    
+                alert("Registration and credentials setup successful!");
+                location.href = "./index.html";
+            } catch (error) {
+                console.error("Error during registration:", error);
+    
+                if (error.message.includes("revert")) {
+                    alert("Registration failed: " + error.message.split("revert ")[1]);
+                } else {
+                    alert("An unexpected error occurred. Please try again.");
+                }
             }
-
-            if (age < 10 || age > 99) {
-                alert("Please input an age which makes sense. TQ");
-                return;
-            }
-
-            if (designation === "1" && !name.includes("(")) {
-                alert("Doctor name must include department in brackets (e.g., Doc (ENT)).");
-                return;
-            }
-
-            const usernameTaken = await isUsernameTaken(username);
-            if (usernameTaken) {
-                alert("Username is already taken. Please choose a different username.");
-                return;
-            }
-
-            if (!validatePassword(password)) {
-                alert(
-                    "Password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, one digit, and one special character."
-                );
-                return;
-            }
-
-            const accounts = await web3.eth.getAccounts();
-            const publicKey = accounts[0];
-
-            await contractInstance.methods.registerUser(username, password).send({ from: publicKey });
-            await contractInstance.methods.add_agent_request(name, age, parseInt(designation)).send({ from: publicKey });
-
-            alert("Registration and credentials setup successful!");
-            location.href = "./index.html";
-        } catch (error) {
-            console.error("Error during registration:", error);
-            alert("Registration failed. Please try again.");
         }
-    }
     </script>
+    
 </body>
 
 </html>

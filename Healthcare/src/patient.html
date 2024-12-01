@@ -186,19 +186,23 @@
     <script src="js/utils.js"></script> <!-- Include utils.js -->
 
     <script>
-        async function initializePage() {
+async function initializePage() {
         try {
             console.log("Validating session...");
             await validateLogin(); // Ensure session exists before initializing Web3
 
             console.log("Initializing MetaMask and smart contract...");
             await initializeWeb3(); // Only initialize Web3 if session is valid
-            
+
             console.log("Validating role as patient...");
             await validateRole("patient"); // Ensure the user has the "patient" role
 
-            // Optionally, log the patient login if you want a gas payment here
-            await logPatientLogin();
+            // Log the patient login only once, and only if not already logged
+            if (!sessionStorage.getItem("patientLoggedIn")) {
+                console.log("Logging patient login...");
+                await logPatientLogin(); // Log the patient's login with a gas payment
+                sessionStorage.setItem("patientLoggedIn", "true");
+            }
 
             console.log("Loading patient dashboard...");
             attachLogout(); // Attach logout functionality

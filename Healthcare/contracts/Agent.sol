@@ -77,12 +77,22 @@ contract Agent {
     event UserLoggedOut(address indexed user, uint256 timestamp);
     event PasswordUpdated(address indexed user);
 
-    constructor() {
-        adminAddress = msg.sender; // Set the deployer's address as the admin
+    constructor(string memory username, string memory password) {
+    adminAddress = msg.sender; // Set the deployer's address as the admin
+
+    // Store hashed credentials securely
+    usernames[adminAddress] = username; // Save the admin username
+    hashedPasswords[adminAddress] = keccak256(abi.encodePacked(password)); // Save the hashed password
+    isUsernameTaken[username] = true; // Mark admin's username as taken
     }
 
     modifier onlyAdmin() {
         require(msg.sender == adminAddress, "Caller is not an admin");
+        _;
+    }
+
+    modifier notAdmin() {
+        require(msg.sender != adminAddress, "Admin cannot perform this action");
         _;
     }
 
@@ -111,8 +121,15 @@ contract Agent {
     }
 
     function authenticate(string memory username, string memory password) public view returns (bool) {
-        require(keccak256(abi.encodePacked(usernames[msg.sender])) == keccak256(abi.encodePacked(username)), "Invalid username");
-        require(hashedPasswords[msg.sender] == keccak256(abi.encodePacked(password)), "Invalid password");
+        require(bytes(usernames[msg.sender]).length > 0, "User not registered");
+        require(
+            keccak256(abi.encodePacked(usernames[msg.sender])) == keccak256(abi.encodePacked(username)),
+            "Invalid username"
+        );
+        require(
+            hashedPasswords[msg.sender] == keccak256(abi.encodePacked(password)),
+            "Invalid password"
+        );
         return true;
     }
 
@@ -193,19 +210,20 @@ contract Agent {
     requireApprovalForRoleSwitch = _requireApproval;
     }
 
-    // Modified add_agent_request to include name and age
-    function add_agent_request(string memory _name, uint256 _age, uint256 _designation) public {
+    // Request to add agent
+    function add_agent_request(string memory _name, uint256 _age, uint256 _designation) public notAdmin {
         require(bytes(_name).length > 0, "Name cannot be empty");
         require(_age > 0, "Age must be greater than zero");
+        require(bytes(usernames[msg.sender]).length > 0, "User not registered"); // Ensure user is registered
 
         if (_designation == 0) {
-            require(bytes(patientInfo[msg.sender].name).length == 0, "Patient already registered");
+            require(bytes(patientInfo[msg.sender].name).length == 0, "Already registered as patient");
             require(!isPendingPatientApproval[msg.sender], "Request already submitted");
 
             pendingPatientApprovals.push(msg.sender);
             isPendingPatientApproval[msg.sender] = true;
         } else if (_designation == 1) {
-            require(bytes(doctorInfo[msg.sender].name).length == 0, "Doctor already registered");
+            require(bytes(doctorInfo[msg.sender].name).length == 0, "Already registered as doctor");
             require(!isPendingDoctorApproval[msg.sender], "Request already submitted");
 
             pendingDoctorApprovals.push(msg.sender);
@@ -220,90 +238,93 @@ contract Agent {
         emit RegistrationRequested(msg.sender, _name, _designation, block.timestamp);
     }
 
-    // Approve registration function
-    function approve_registration(
-    address user,
-    string memory _name,
-    uint256 _age,
-    uint256 _designation
-) public onlyAdmin {
-    require(bytes(_name).length > 0, "Name cannot be empty");
-    require(_age > 0, "Age must be greater than zero");
-
-    if (_designation == 0) { // Approve as Patient
-        // Remove from doctor-related mappings/lists if currently a Doctor
-        if (bytes(doctorInfo[user].name).length > 0) {
-            removeElementFromArray(doctorList, user);
-            delete doctorInfo[user];
-        }
-
-        // Remove from pending doctor approvals if present
-        if (isPendingDoctorApproval[user]) {
-            isPendingDoctorApproval[user] = false;
-            removePendingApproval(user, pendingDoctorApprovals);
-        }
-
-        // Prevent duplicate registration as Patient
-        if (bytes(patientInfo[user].name).length > 0) {
-            revert("User is already a registered patient.");
-        }
-
-        // Add to patient list
-        Patient storage patient = patientInfo[user];
-        patient.name = _name;
-        patient.age = _age;
-        patientList.push(user);
-
-        // Remove from pending patient approvals
-        if (isPendingPatientApproval[user]) {
-            isPendingPatientApproval[user] = false;
-            removePendingApproval(user, pendingPatientApprovals);
-        }
-
-        emit RegistrationApproved(user, 0, block.timestamp);
-
-    } else if (_designation == 1) { // Approve as Doctor
-        // Remove from patient-related mappings/lists if currently a Patient
-        if (bytes(patientInfo[user].name).length > 0) {
-            removeElementFromArray(patientList, user);
-            delete patientInfo[user];
-        }
-
-        // Remove from pending patient approvals if present
-        if (isPendingPatientApproval[user]) {
-            isPendingPatientApproval[user] = false;
-            removePendingApproval(user, pendingPatientApprovals);
-        }
-
-        // Prevent duplicate registration as Doctor
-        if (bytes(doctorInfo[user].name).length > 0) {
-            revert("User is already a registered doctor.");
-        }
-
-        // Add to doctor list
-        Doctor storage doctor = doctorInfo[user];
-        doctor.name = _name;
-        doctor.age = _age;
-        doctorList.push(user);
-
-        // Remove from pending doctor approvals
-        if (isPendingDoctorApproval[user]) {
-            isPendingDoctorApproval[user] = false;
-            removePendingApproval(user, pendingDoctorApprovals);
-        }
-
-        emit RegistrationApproved(user, 1, block.timestamp);
-
-    } else {
-        revert("Invalid designation");
+    // Prevent admin registration as patient or doctor
+    function isAdmin() public view returns (bool) {
+        return msg.sender == adminAddress;
     }
 
-    // Cleanup pending names and ages
-    delete pendingNames[user];
-    delete pendingAges[user];
-}
+    // Approve registration function
+    function approve_registration(
+        address user,
+        string memory _name,
+        uint256 _age,
+        uint256 _designation
+    ) public onlyAdmin {
+        require(bytes(_name).length > 0, "Name cannot be empty");
+        require(_age > 0, "Age must be greater than zero");
 
+        if (_designation == 0) { // Approve as Patient
+            // Remove from doctor-related mappings/lists if currently a Doctor
+            if (bytes(doctorInfo[user].name).length > 0) {
+                removeElementFromArray(doctorList, user);
+                delete doctorInfo[user];
+            }
 
+            // Remove from pending doctor approvals if present
+            if (isPendingDoctorApproval[user]) {
+                isPendingDoctorApproval[user] = false;
+                removePendingApproval(user, pendingDoctorApprovals);
+            }
+
+            // Prevent duplicate registration as Patient
+            if (bytes(patientInfo[user].name).length > 0) {
+                revert("User is already a registered patient.");
+            }
+
+            // Add to patient list
+            Patient storage patient = patientInfo[user];
+            patient.name = _name;
+            patient.age = _age;
+            patientList.push(user);
+
+            // Remove from pending patient approvals
+            if (isPendingPatientApproval[user]) {
+                isPendingPatientApproval[user] = false;
+                removePendingApproval(user, pendingPatientApprovals);
+            }
+
+            emit RegistrationApproved(user, 0, block.timestamp);
+
+        } else if (_designation == 1) { // Approve as Doctor
+            // Remove from patient-related mappings/lists if currently a Patient
+            if (bytes(patientInfo[user].name).length > 0) {
+                removeElementFromArray(patientList, user);
+                delete patientInfo[user];
+            }
+
+            // Remove from pending patient approvals if present
+            if (isPendingPatientApproval[user]) {
+                isPendingPatientApproval[user] = false;
+                removePendingApproval(user, pendingPatientApprovals);
+            }
+
+            // Prevent duplicate registration as Doctor
+            if (bytes(doctorInfo[user].name).length > 0) {
+                revert("User is already a registered doctor.");
+            }
+
+            // Add to doctor list
+            Doctor storage doctor = doctorInfo[user];
+            doctor.name = _name;
+            doctor.age = _age;
+            doctorList.push(user);
+
+            // Remove from pending doctor approvals
+            if (isPendingDoctorApproval[user]) {
+                isPendingDoctorApproval[user] = false;
+                removePendingApproval(user, pendingDoctorApprovals);
+            }
+
+            emit RegistrationApproved(user, 1, block.timestamp);
+
+        } else {
+            revert("Invalid designation");
+        }
+
+        // Cleanup pending names and ages
+        delete pendingNames[user];
+        delete pendingAges[user];
+    }
 
     // Reject registration function
     function reject_registration(address user, uint256 _designation) public onlyAdmin {
